@@ -11,11 +11,17 @@ const path = require('path');
 const { spawn } = require('child_process');
 
 const patchPath = path.join(__dirname, 'patch-fs.cjs').replace(/\\/g, '/');
-const existingNodeOptions = process.env.NODE_OPTIONS || '';
+let nodeOptions = process.env.NODE_OPTIONS || '';
 
-if (!existingNodeOptions.includes('patch-fs.cjs')) {
-  process.env.NODE_OPTIONS = `${existingNodeOptions} --require "${patchPath}"`.trim();
+if (!nodeOptions.includes('patch-fs.cjs')) {
+  nodeOptions = `${nodeOptions} --require "${patchPath}"`.trim();
 }
+
+if (!nodeOptions.includes('max-old-space-size')) {
+  nodeOptions = `${nodeOptions} --max-old-space-size=2048`.trim();
+}
+
+process.env.NODE_OPTIONS = nodeOptions;
 
 const nextPackage = require.resolve('next/package.json');
 const nextBin = path.join(path.dirname(nextPackage), 'dist', 'bin', 'next');

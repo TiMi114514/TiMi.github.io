@@ -355,9 +355,9 @@ async function openAiChat(
 }
 
 /**
- * Ask the tutor. Native mode streams RAGFlow answers with citations and keeps
- * conversation context via a RAGFlow session id. OpenAI mode talks to the
- * OpenAI-compatible endpoint (no citations) and can fall back to native mode.
+ * Ask the tutor. OpenAI-compatible mode is used for the public tutor because it
+ * strips the model's reasoning and returns only the final answer. Citations are
+ * fetched separately from the retrieval API.
  */
 export async function ragflowChat(
   cfg: RagflowConfig,
@@ -372,23 +372,117 @@ export async function ragflowChat(
   if (!question) throw new Error('Type a question for the tutor.');
 
   if (cfg.mode === 'openai') {
-    let emitted = false;
-    const guarded: ChatOptions = {
-      ...options,
-      onDelta: (delta) => {
-        emitted = true;
-        options.onDelta?.(delta);
-      },
-    };
-    try {
-      return await openAiChat(cfg, messages, guarded);
-    } catch (error) {
-      if (emitted) throw error;
-      return nativeChat(cfg, question, options);
-    }
+    return openAiChat(cfg, messages, options);
   }
 
   return nativeChat(cfg, question, options);
+}
+
+export type RagflowAssistant = {
+  id: string;
+  name: string;
+  label: string;
+  datasetIds: string[];
+  kbNames: string[];
+};
+
+const ASSISTANT_CACHE_KEY = 'differential-quant.assistants.v1';
+const ASSISTANT_CACHE_TTL = 10 * 60 * 1000;
+
+type RawAssistant = {
+  id?: string;
+  name?: string;
+  dataset_ids?: string[];
+  kb_names?: string[];
+};
+
+/**
+ * List the assistants that belong to this site. Assistants are created in
+ * RAGFlow with the "DQ · " prefix, one per knowledge base.
+ */
+export async function listRagflowAssistants(cfg: RagflowConfig): Promise<RagflowAssistant[]> {
+  if (!cfg.baseUrl || !cfg.apiKey) return [];
+
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = window.sessionStorage.getItem(ASSISTANT_CACHE_KEY);
+      if (raw) {
+        const cached = JSON.parse(raw) as { ts: number; items: RagflowAssistant[] };
+        if (Date.now() - cached.ts < ASSISTANT_CACHE_TTL && Array.isArray(cached.items)) {
+          return cached.items;
+        }
+      }
+    } catch {
+      /* ignore cache */
+    }
+  }
+
+  const res = await fetch(`${cfg.baseUrl}/api/v1/chats`, { headers: authHeaders(cfg) });
+  if (!res.ok) throw new Error(errorMessage(res.status, res.statusText, await res.text()));
+
+  const json = await res.json();
+  const chats = (json?.data?.chats ?? []) as RawAssistant[];
+  const items = chats
+    .filter((chat) => typeof chat.name === 'string' && chat.name.startsWith('DQ · ') && chat.id)
+    .map((chat) => ({
+      id: String(chat.id),
+      name: String(chat.name),
+      label: String(chat.name).replace(/^DQ · /, ''),
+      datasetIds: chat.dataset_ids ?? [],
+      kbNames: chat.kb_names ?? [],
+    }));
+
+  if (typeof window !== 'undefined' && items.length > 0) {
+    try {
+      window.sessionStorage.setItem(
+        ASSISTANT_CACHE_KEY,
+        JSON.stringify({ ts: Date.now(), items }),
+      );
+    } catch {
+      /* storage may be unavailable */
+    }
+  }
+
+  return items;
+}
+
+/**
+ * Retrieve the source documents for a question. Used to show citation chips
+ * under an OpenAI-compatible answer (that endpoint does not return references).
+ */
+export async function retrieveCitations(
+  cfg: RagflowConfig,
+  question: string,
+  datasetIds: string[],
+): Promise<string[]> {
+  if (!cfg.baseUrl || !cfg.apiKey || datasetIds.length === 0) return [];
+
+  try {
+    const res = await fetch(`${cfg.baseUrl}/api/v1/retrieval`, {
+      method: 'POST',
+      headers: authHeaders(cfg),
+      body: JSON.stringify({
+        question,
+        dataset_ids: datasetIds,
+        page_size: 6,
+        similarity_threshold: 0.2,
+        vector_similarity_weight: 0.3,
+        keyword: false,
+      }),
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const chunks = (json?.data?.chunks ?? []) as {
+      document_keyword?: string;
+      document_name?: string;
+    }[];
+    const names = chunks
+      .map((chunk) => chunk.document_keyword || chunk.document_name)
+      .filter((name): name is string => Boolean(name));
+    return unique(names);
+  } catch {
+    return [];
+  }
 }
 
 /* ------------------------------------------------------------------ */

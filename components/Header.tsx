@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { Pomodoro } from './Pomodoro';
 import { useAuth } from './AuthProvider';
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
@@ -42,7 +43,7 @@ export function Header() {
             height={36}
             className="h-9 w-9 rounded-lg object-cover transition-transform duration-300 group-hover:-rotate-3 group-hover:scale-105"
           />
-          <span className="whitespace-nowrap font-display text-[17px] tracking-[-0.01em] transition-colors group-hover:text-[#2b2921] sm:text-[20px]">
+          <span className="hidden whitespace-nowrap font-display text-[17px] tracking-[-0.01em] transition-colors group-hover:text-[#2b2921] min-[420px]:inline sm:text-[20px]">
             Differential Quant
           </span>
         </Link>
@@ -62,7 +63,8 @@ export function Header() {
           })}
         </nav>
 
-        <div className="flex items-center gap-3 text-[13px]">
+        <div className="flex items-center gap-2 text-[13px] sm:gap-3">
+          <Pomodoro />
           {loading ? (
             <span className="h-8 w-24 animate-pulse rounded-full bg-soft" />
           ) : user ? (

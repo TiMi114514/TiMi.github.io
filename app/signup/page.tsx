@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { useAuth } from '@/components/AuthProvider';
+import { forwardTeacherApplication } from '@/lib/teacher-email';
 import { appUrl, supabase } from '@/lib/supabase';
 
 export default function SignupPage() {
@@ -17,8 +18,41 @@ export default function SignupPage() {
   const [applyTeacher, setApplyTeacher] = useState(false);
   const [teacherSubjects, setTeacherSubjects] = useState('');
   const [teacherMessage, setTeacherMessage] = useState('');
+  const [teacherFile, setTeacherFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const MAX_FILE_BYTES = 10 * 1024 * 1024;
+  const ALLOWED_TYPES = [
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ];
+
+  function chooseFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    setError(null);
+    if (!file) {
+      setTeacherFile(null);
+      return;
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      setError('The attachment must be 10 MB or smaller.');
+      event.target.value = '';
+      setTeacherFile(null);
+      return;
+    }
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setError('Attach a JPG, PNG, WebP, PDF, DOC or DOCX file.');
+      event.target.value = '';
+      setTeacherFile(null);
+      return;
+    }
+    setTeacherFile(file);
+  }
 
   useEffect(() => {
     if (!loading && user) router.replace('/account');
@@ -53,6 +87,16 @@ export default function SignupPage() {
     }
 
     if (applyTeacher) {
+      let documentPath: string | null = null;
+      if (teacherFile) {
+        const safeName = teacherFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `${data.user?.id ?? 'anon'}/${Date.now()}-${safeName}`;
+        const { error: uploadError } = await supabase.storage
+          .from('teacher-documents')
+          .upload(path, teacherFile, { contentType: teacherFile.type, upsert: false });
+        if (!uploadError) documentPath = path;
+      }
+
       await supabase
         .from('teacher_applications')
         .insert({
@@ -61,9 +105,22 @@ export default function SignupPage() {
           display_name: name.trim() || null,
           subjects: teacherSubjects.trim() || null,
           message: teacherMessage.trim() || null,
+          personal_statement: teacherMessage.trim() || null,
+          document_path: documentPath,
+          document_name: teacherFile?.name ?? null,
+          document_size: teacherFile?.size ?? null,
+          document_type: teacherFile?.type ?? null,
           status: 'pending',
         })
         .then(() => undefined, () => undefined);
+
+      forwardTeacherApplication({
+        email: email.trim(),
+        name: name.trim(),
+        subjects: teacherSubjects.trim(),
+        statement: teacherMessage.trim(),
+        file: teacherFile,
+      });
     }
 
     window.sessionStorage.setItem('paperwise.pendingEmail', email.trim());
@@ -154,15 +211,42 @@ export default function SignupPage() {
                   />
                 </label>
                 <label className="block space-y-1.5 text-[12.5px] text-muted">
-                  <span>Short introduction</span>
+                  <span>Personal statement</span>
                   <textarea
-                    rows={3}
+                    rows={4}
                     className="input resize-y"
                     value={teacherMessage}
                     onChange={(event) => setTeacherMessage(event.target.value)}
-                    placeholder="Qualifications, exam boards, teaching experience…"
+                    placeholder="Qualifications, exam boards, teaching experience, why you want to tutor…"
                   />
                 </label>
+                <label className="block space-y-1.5 text-[12.5px] text-muted">
+                  <span>Photo or document (optional, max 10 MB)</span>
+                  <input
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx"
+                    onChange={chooseFile}
+                    className="block w-full cursor-pointer rounded-xl border border-line bg-white/80 px-3 py-2 text-[12px] text-muted file:mr-3 file:rounded-full file:border-0 file:bg-soft file:px-3 file:py-1.5 file:text-[11.5px] file:text-ink"
+                  />
+                  <span className="block text-[10.5px] text-muted/80">
+                    JPG, PNG, WebP, PDF, DOC or DOCX. Used only to review your application.
+                  </span>
+                </label>
+                {teacherFile ? (
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-line bg-white/70 px-3 py-2 text-[11.5px]">
+                    <span className="min-w-0 truncate text-ink">{teacherFile.name}</span>
+                    <span className="shrink-0 text-muted">
+                      {(teacherFile.size / 1024 / 1024).toFixed(1)} MB
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setTeacherFile(null)}
+                      className="shrink-0 text-muted underline decoration-line underline-offset-2 hover:text-ink"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Check, GraduationCap, Mail, UserRound, X } from 'lucide-react';
+import { Check, GraduationCap, Mail, Paperclip, UserRound, X } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/lib/supabase';
 
@@ -12,6 +12,10 @@ type TeacherApplication = {
   display_name: string | null;
   subjects: string | null;
   message: string | null;
+  personal_statement: string | null;
+  document_path: string | null;
+  document_name: string | null;
+  document_size: number | null;
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
 };
@@ -46,7 +50,9 @@ export default function AdminTutorsPage() {
     const [apps, reqs] = await Promise.all([
       supabase
         .from('teacher_applications')
-        .select('id, user_id, email, display_name, subjects, message, status, created_at')
+        .select(
+          'id, user_id, email, display_name, subjects, message, personal_statement, document_path, document_name, document_size, status, created_at',
+        )
         .order('created_at', { ascending: false })
         .limit(100),
       supabase
@@ -110,6 +116,18 @@ export default function AdminTutorsPage() {
       .eq('id', row.id);
     if (error) setMessage(error.message);
     else await load();
+  }
+
+  async function openDocument(path: string) {
+    if (!supabase) return;
+    const { data, error } = await supabase.storage
+      .from('teacher-documents')
+      .createSignedUrl(path, 3600);
+    if (error || !data?.signedUrl) {
+      setMessage(error?.message ?? 'Could not open the attachment.');
+      return;
+    }
+    window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
   }
 
   return (
@@ -201,10 +219,26 @@ export default function AdminTutorsPage() {
                   </span>
                 </div>
 
-                {row.message ? (
-                  <p className="mt-3 rounded-lg bg-[#fafafa] px-3.5 py-2.5 text-[12px] leading-relaxed text-[#52525b]">
-                    {row.message}
+                {row.personal_statement || row.message ? (
+                  <p className="mt-3 whitespace-pre-wrap rounded-lg bg-[#fafafa] px-3.5 py-2.5 text-[12px] leading-relaxed text-[#52525b]">
+                    {row.personal_statement || row.message}
                   </p>
+                ) : null}
+
+                {row.document_path ? (
+                  <button
+                    type="button"
+                    onClick={() => void openDocument(row.document_path!)}
+                    className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-[#e4e4e7] bg-white px-3 py-1.5 text-[11.5px] text-[#3f3f46] transition-colors hover:bg-[#fafafa]"
+                  >
+                    <Paperclip className="h-3.5 w-3.5" />
+                    {row.document_name || 'Attachment'}
+                    {row.document_size ? (
+                      <span className="text-[#a1a1aa]">
+                        · {(row.document_size / 1024 / 1024).toFixed(1)} MB
+                      </span>
+                    ) : null}
+                  </button>
                 ) : null}
 
                 {row.status === 'pending' ? (

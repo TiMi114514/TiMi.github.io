@@ -199,6 +199,18 @@ body {
   transform: rotate(16deg) scale(1.08);
 }
 
+.chat-panel:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  border: 0;
+  border-radius: 0;
+  background: var(--cream);
+}
+
+.chat-panel:fullscreen .chat-scroll {
+  max-height: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

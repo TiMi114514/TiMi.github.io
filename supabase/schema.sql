@@ -393,3 +393,44 @@ create policy "human_tutor_requests_admin_all"
   on public.human_tutor_requests for all
   using (public.is_admin())
   with check (public.is_admin());
+
+-- ============================================================
+-- Teacher application attachments (10 MB limit) and statements
+-- ============================================================
+
+alter table public.teacher_applications
+  add column if not exists personal_statement text,
+  add column if not exists document_path text,
+  add column if not exists document_name text,
+  add column if not exists document_size bigint,
+  add column if not exists document_type text;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'teacher-documents',
+  'teacher-documents',
+  false,
+  10485760,
+  array[
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ]
+)
+on conflict (id) do update
+  set file_size_limit = excluded.file_size_limit,
+      allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "teacher_documents_upload" on storage.objects;
+create policy "teacher_documents_upload"
+  on storage.objects for insert
+  to anon, authenticated
+  with check (bucket_id = 'teacher-documents');
+
+drop policy if exists "teacher_documents_admin_read" on storage.objects;
+create policy "teacher_documents_admin_read"
+  on storage.objects for select
+  using (bucket_id = 'teacher-documents' and public.is_admin());

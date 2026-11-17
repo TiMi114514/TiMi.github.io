@@ -4,9 +4,10 @@ Past papers, an AI tutor grounded in your own knowledge base, and human tutors o
 
 - **Frontend**: Next.js 15 (App Router) → static export, hosted on GitHub Pages
 - **Accounts**: Supabase Auth (email + password, email verification) & PostgreSQL
-- **AI tutor**: RAGFlow, via its native or OpenAI-compatible chat endpoint
+- **AI tutor**: RAGFlow OpenAI-compatible endpoint for clean final answers, with retrieval citations and a subject/database selector
 - **Human tutors**: requests are stored in Supabase and reviewed in the admin dashboard
 - **Archive**: RAGFlow dataset documents (fallback: Supabase `papers` table, then sample data)
+- **Study tools**: Pomodoro timer with a black full-screen focus mode, plus full-screen chat
 
 The brand mark is the supplied **dx** image (cropped and exported to `public/brand-mark.png`, favicon and Apple touch icon). The interface keeps the warm cream canvas and editorial serif type, now using Source Serif 4 for flatter, wider display letterforms.
 
@@ -14,13 +15,18 @@ The brand mark is the supplied **dx** image (cropped and exported to `public/bra
 | --- | --- | --- |
 | ![Landing](docs/screenshots/home.png) | ![Archive](docs/screenshots/archive.png) | ![Tutor](docs/screenshots/tutor.png) |
 
+| Pomodoro focus screen | Teacher application |
+| --- | --- |
+| ![Pomodoro](docs/screenshots/pomodoro.png) | ![Teacher application](docs/screenshots/teacher-application.png) |
+
 **Deployed:** [timi114514.github.io/TiMi.github.io](https://timi114514.github.io/TiMi.github.io/)
 
 Already configured in the Supabase project `wksdpsmxwybsmtjjipxa`:
 
 - `profiles`, `papers`, `downloads`, `page_views`, `admins`, `teacher_applications`, `human_tutor_requests` tables with RLS and six starter papers
+- private `teacher-documents` storage bucket (10 MB limit, images/PDF/DOC/DOCX)
 - Email/password auth with confirmation required
-- Site URL `https://timi114514.github.io/TiMi.github.io/` and redirect allow-list for `/auth/callback` (plus `http://localhost:3000/**`)
+- Site URL `https://timi114514.github.io/TiMi.github.io/` and redirect allow-list for `/auth/callback` and `/auth/reset` (plus `http://localhost:3000/**`)
 
 Still environment-dependent:
 
@@ -31,16 +37,27 @@ Still environment-dependent:
 
 Both live under **/tutor**, with a two-pill switcher:
 
-- **/tutor** — AI tutor. Streams RAGFlow answers with citation chips; conversation context is kept through a RAGFlow session id.
+- **/tutor** — AI tutor. Answers come from RAGFlow's OpenAI-compatible endpoint, which returns the final answer without the model's chain of thought. A knowledge-base selector switches between the assistants created in RAGFlow (`DQ · General`, Biology, Chemistry, Mathematics, Economics); citations are fetched from the retrieval API and rendered under each answer. The chat header has a full-screen button.
 - **/tutor/human** — human tutor. Signed-in, verified students submit the subject, question, preferred time and contact email. Requests land in `human_tutor_requests` with `pending` status and the student sees their own request history.
+
+The assistants are real RAGFlow chats named with the `DQ · ` prefix. Physics, Further Mathematics and Computer Science datasets have documents but zero parsed chunks in RAGFlow, so they are not offered until those datasets are parsed. Add more assistants with the same prefix and they appear in the selector automatically (cached for ten minutes).
 
 ![Human tutor](docs/screenshots/human-tutor.png)
 
 ### Teacher applications
 
-The sign-up form has an optional **Apply to become a teacher** checkbox. It reveals subjects and an introduction; on successful sign-up the application is written to `teacher_applications` as `pending`. Admins review it under **Admin → Tutors** and can approve or reject. The student's account page shows the review status.
+The sign-up form has an optional **Apply to become a teacher** checkbox. It reveals subjects, a personal statement and an optional photo/document (JPG, PNG, WebP, PDF, DOC or DOCX, maximum 10 MB). On successful sign-up:
+
+- the file is uploaded to the private `teacher-documents` bucket;
+- the application is written to `teacher_applications` as `pending`, with the statement and attachment metadata;
+- a copy is forwarded to **JackyChen2027@outlook.com** through FormSubmit, with the applicant's email, statement and file attached.
+
+Admins review applications under **Admin → Tutors**, can open the attachment through a one-hour signed URL, and can approve or reject. The student's account page shows the review status.
+
+> FormSubmit requires a one-time activation: the first application sends an activation link to the owner's inbox. Click it once, then future applications arrive by email. Until activation, every application is still stored in Supabase and visible in the admin dashboard. The email relay is a third-party service; the Supabase copy is the source of truth.
 
 - Public insert policy: only `pending` rows, so nobody can self-approve.
+- Storage upload policy allows anonymous uploads into the bucket; reads are admin-only.
 - Students can read only their own application (RLS), admins can read and update everything.
 - Approved teachers are the pool used for human tutor sessions.
 
@@ -69,7 +86,18 @@ Animations are pointer-driven and transform-only:
 - buttons, the logo and cards animate on hover;
 - admin bars transition their width.
 
-No timers, polling or additional requests drive the visuals, and `prefers-reduced-motion` disables them. The analytics page refreshes only on open, on manual refresh, and at most every five minutes while the tab is visible.
+No timers, polling or additional requests drive the visuals, and `prefers-reduced-motion` disables them. The analytics page refreshes only on open, on manual refresh, and at most every five minutes while the tab is visible. The Pomodoro clock is the only one-second timer, and it never touches the network.
+
+## Pomodoro timer
+
+The header has a Pomodoro control, available on every page:
+
+- 25-minute focus / 5-minute break sessions, start, pause and reset;
+- the remaining time survives navigation and reloads through `localStorage`;
+- **Focus screen** enters the Fullscreen API with a pure black background showing the current clock and the remaining time, plus pause, reset, break and exit controls;
+- if the browser blocks fullscreen, the same black overlay still opens until you close it.
+
+No request is made while the timer runs.
 
 ## Admin dashboard
 
@@ -86,7 +114,7 @@ Working sections:
 - **Analytics** — total visits, unique visitors, average visit duration, live visitors, daily traffic chart, page traffic and country breakdown, 7/14/30/90-day ranges, tabs for Traffic overview / Sales overview / Session recordings.
 - **Overview** — traffic, account, archive and download summary.
 - **App Users** — every Supabase Auth account with verification status and last sign-in.
-- **Tutors** — approve/reject teacher applications and triage human tutor requests (`pending → contacted → closed`).
+- **Tutors** — approve/reject teacher applications (with statement and attachment) and triage human tutor requests (`pending → contacted → closed`).
 - **Data** — add, publish/unpublish and delete fallback papers in Supabase.
 - **Logs** — recent downloads and raw page views.
 - **Settings** — add/remove administrators, inspect the deployment and adjust the admin-only RAGFlow connection override (the panel is no longer shown to visitors).
@@ -157,12 +185,13 @@ Copy `.env.example` to `.env.local` and fill in:
 
 The app talks to RAGFlow from the browser, so the RAGFlow API server must be reachable from the visitor's browser and allow CORS. Both are true for the local instance tested here (`access-control-allow-origin: *`).
 
-1. In RAGFlow create (or reuse) a **chat assistant** and note its `chat_id`. The assistant's `llm_id` is discovered automatically when OpenAI mode is selected.
-2. Create an **API key** in user settings.
-3. Ingest your past papers and course material into one or more **datasets** (knowledge bases). The archive reads every dataset listed in `NEXT_PUBLIC_RAGFLOW_DATASET_ID` (comma separated, first 100 documents each, "Show more" paginates in the UI).
-4. The tutor supports two transports, switchable in **Admin → Settings → RAGFlow connection** (stored in `localStorage`, admin browsers only):
-   - **RAGFlow native** (default) — `POST {baseUrl}/api/v1/chats/{chat_id}/completions`. Streams `data.answer` deltas, keeps context through `session_id`, and returns `reference.chunks[].document_name` for the citation chips.
-   - **OpenAI-compatible** — `POST {baseUrl}/api/v1/chats_openai/{chat_id}/chat/completions` with `{model, messages, stream}`. RAGFlow requires `model` to be the assistant's internal `llm_id`; the app resolves it via `GET /api/v1/chats` and caches it. This transport does not return citations, so the UI quietly falls back to native mode when the facade rejects the request.
+1. Create an **API key** in RAGFlow user settings.
+2. Ingest your past papers and course material into one or more **datasets** (knowledge bases). The archive reads every dataset listed in `NEXT_PUBLIC_RAGFLOW_DATASET_ID` (comma separated, first 100 documents each, "Show more" paginates in the UI).
+3. Create one **chat assistant per subject**, named `DQ · <Subject>` (for example `DQ · Chemistry`), and bind it to that subject's dataset. A `DQ · General` assistant can bind several datasets. The tutor lists every assistant with the `DQ · ` prefix, so a new one appears in the selector automatically. Datasets with zero parsed chunks cannot be bound to an assistant until they are parsed.
+4. The public tutor uses the **OpenAI-compatible** endpoint for answers:
+   `POST {baseUrl}/api/v1/chats_openai/{chat_id}/chat/completions` with `{model, messages, stream}`. RAGFlow expects `model` to be the assistant's internal `llm_id`; the app resolves it via `GET /api/v1/chats` and caches it. This endpoint returns only the final answer, so the model's chain of thought is not shown. Citations are fetched separately from `POST /api/v1/retrieval` using `document_keyword`.
+   The native endpoint remains in `lib/ragflow.ts` for debugging, but the UI forces OpenAI mode.
+5. **Admin-only connection override**: **Admin → Settings → RAGFlow connection** stores the base URL, key, chat id, dataset ids and mode in the admin browser's `localStorage`. Visitors never see this panel.
 5. **Archive API**:
    ```
    GET  {baseUrl}/api/v1/datasets?page=1&page_size=100                 # dataset names → subjects
@@ -210,7 +239,7 @@ npx serve out         # preview
 ### Integration checks
 
 ```bash
-npx tsx scripts/test-ragflow.ts     # archive + native/OpenAI chat + follow-up session
+npx tsx scripts/test-ragflow.ts     # archive, assistants, OpenAI answers and retrieval citations
 ```
 
 The local RAGFlow instance used during development responded on `http://localhost:9380`, CORS `*`, assistant `f37a7a58e16c11f19cd2051ed6437597` (Biology dataset) and seven other A-Level datasets. The test prints 700 archive documents and citation names.
@@ -222,7 +251,7 @@ The local RAGFlow instance used during development responded on `http://localhos
 ```
 Browser (GitHub Pages, static)
  ├─ Supabase JS ──────────── auth (email verify) + papers/downloads (RLS)
- └─ fetch ────────────────── RAGFlow chat (native or OpenAI-compatible) + dataset API
+ └─ fetch ────────────────── RAGFlow OpenAI-compatible chat + retrieval citations + dataset API
 ```
 
 - Browsing and downloading are public; guests are throttled to one document per second. Both tutors require a signed-in, verified account.
@@ -250,22 +279,23 @@ Browser (GitHub Pages, static)
 app/
   page.tsx              landing page (hero, archive preview, tutor section)
   papers/page.tsx       public archive: search, filters, guest-throttled downloads
-  tutor/page.tsx        AI tutor with auth gating
+  tutor/page.tsx        AI tutor with auth gating and knowledge-base selector
   tutor/human/page.tsx  human tutor request form + request history
-  login|signup|verify   email/password auth flow; optional teacher application
+  login|signup|verify   email/password auth flow; optional teacher application with attachment
   forgot-password/page.tsx  request a reset link
   auth/reset/page.tsx   choose a new password from the recovery link
   account/page.tsx      profile, verification status, teacher application, downloads
   admin/                Analytics, Overview, App Users, Tutors, Data, Logs, Settings, placeholders
   auth/callback/page.tsx  Supabase email-confirmation landing
-components/             Header, Footer, HeroPapers, PaperCard, ChatPanel, TutorTabs, AdminShell, AnalyticsTracker
+components/             Header, Pomodoro, HeroPapers, PaperCard, ChatPanel, TutorWorkspace, TutorTabs, AdminShell, AnalyticsTracker
 lib/
   supabase.ts           client + appUrl()
-  ragflow.ts            native/OpenAI-compatible chat, dataset listing/download
+  ragflow.ts            OpenAI-compatible chat, assistant list, retrieval citations, dataset downloads
+  teacher-email.ts      FormSubmit forwarding for teacher applications
   analytics.ts          admin analytics types, country estimate, formatters
   papers.ts             archive loading, five-minute cache, sample fallback
 public/                 brand-mark.png, favicon.png, apple-touch-icon.png
-supabase/schema.sql     tables, RLS, functions, starter rows
+supabase/schema.sql     tables, RLS, functions, storage bucket, starter rows
 .github/workflows/      GitHub Pages deployment
 ```
 
@@ -280,6 +310,11 @@ supabase/schema.sql     tables, RLS, functions, starter rows
 | Password reset email never arrives | The built-in sender is rate-limited; add SMTP and retry after the limit resets |
 | Email link returns to `localhost` | Add the GitHub Pages URL to Supabase **Redirect URLs** |
 | Tutor says "tutor unavailable" | Fill the chat assistant id under **Admin → Settings → RAGFlow connection** |
+| Knowledge-base selector is empty | Create/parse datasets, then create assistants named `DQ · <Subject>` in RAGFlow |
+| AI answer repeats its reasoning | The tutor uses the OpenAI-compatible endpoint; verify the assistant is reachable through `/api/v1/chats_openai/{id}/chat/completions` |
+| Teacher application email never arrives | Click the FormSubmit activation link sent to the owner; the Supabase copy is still in **Admin → Tutors** |
+| Attachment will not upload | Check the 10 MB bucket limit and the allowed MIME types |
+| Pomodoro fullscreen is blocked | The black overlay still opens; allow fullscreen in the browser to enter the real fullscreen mode |
 | Guest cannot download a second paper immediately | Expected: guests are limited to one document per second |
 | Tutor request fails with CORS | Allow the Pages origin on RAGFlow, or use a CORS-enabled tunnel |
 | Archive shows demo cards | No RAGFlow dataset id and no Supabase papers rows; run `schema.sql` and/or set the dataset id |

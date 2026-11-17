@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
-import { ChatPanel } from '@/components/ChatPanel';
+import { TutorWorkspace } from '@/components/TutorWorkspace';
 import { TutorTabs } from '@/components/TutorTabs';
 import { useAuth } from '@/components/AuthProvider';
 
@@ -128,7 +128,7 @@ export default function TutorPage() {
                 </div>
               </div>
             ) : (
-              <ChatPanel />
+              <TutorWorkspace />
             )}
 
             <p className="mt-3 text-[11.5px] leading-relaxed text-muted">

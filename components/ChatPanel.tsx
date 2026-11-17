@@ -3,11 +3,20 @@
 import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ArrowUp, BookOpen, RotateCcw, Square, Sparkles } from 'lucide-react';
+import {
+  ArrowUp,
+  BookOpen,
+  Maximize2,
+  Minimize2,
+  RotateCcw,
+  Square,
+  Sparkles,
+} from 'lucide-react';
 import {
   getRagflowConfig,
   prettyCitation,
   ragflowChat,
+  retrieveCitations,
   type ChatMessage,
 } from '@/lib/ragflow';
 
@@ -23,20 +32,45 @@ const opening: UiMessage = {
     'Ask me anything from your course material — a past paper question, a definition you want unpacked, or a full worked solution. I answer from the knowledge base and list the sources I used.',
 };
 
-export function ChatPanel() {
+export function ChatPanel({
+  chatId,
+  datasetIds,
+}: {
+  chatId?: string;
+  datasetIds?: string[];
+}) {
   const [messages, setMessages] = useState<UiMessage[]>([opening]);
   const [history, setHistory] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    setConnected(Boolean(getRagflowConfig().chatId));
+    setConnected(Boolean(chatId || getRagflowConfig().chatId));
+  }, [chatId]);
+
+  useEffect(() => {
+    const onChange = () => setFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
   }, []);
+
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await panelRef.current?.requestFullscreen();
+      }
+    } catch {
+      /* fullscreen may be blocked by the browser */
+    }
+  }
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -66,10 +100,21 @@ export function ChatPanel() {
     let answer = '';
 
     try {
-      const result = await ragflowChat(getRagflowConfig(), nextHistory, {
+      const baseConfig = getRagflowConfig();
+      const config = {
+        ...baseConfig,
+        chatId: chatId || baseConfig.chatId,
+        mode: 'openai' as const,
+      };
+      const activeDatasets = datasetIds?.length
+        ? datasetIds
+        : baseConfig.datasetId
+            .split(',')
+            .map((value) => value.trim())
+            .filter(Boolean);
+
+      const result = await ragflowChat(config, nextHistory, {
         signal: controller.signal,
-        sessionId,
-        onSessionId: setSessionId,
         onDelta: (delta) => {
           answer += delta;
           setMessages((prev) => {
@@ -83,6 +128,11 @@ export function ChatPanel() {
         },
       });
 
+      let citations = result.citations;
+      if (citations.length === 0) {
+        citations = await retrieveCitations(baseConfig, question, activeDatasets);
+      }
+
       const finalContent = result.content || answer || 'I could not produce an answer this time.';
       setMessages((prev) => {
         const copy = [...prev];
@@ -91,7 +141,7 @@ export function ChatPanel() {
           copy[copy.length - 1] = {
             role: 'assistant',
             content: finalContent,
-            citations: result.citations,
+            citations,
           };
         }
         return copy;
@@ -132,11 +182,10 @@ export function ChatPanel() {
     setMessages([opening]);
     setError(null);
     setInput('');
-    setSessionId(null);
   }
 
   return (
-    <div className="card overflow-hidden">
+    <div ref={panelRef} className="chat-panel card flex h-[560px] flex-col overflow-hidden">
       <div className="flex items-center justify-between gap-3 border-b border-line/80 px-5 py-3.5">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4" aria-hidden />
@@ -151,6 +200,15 @@ export function ChatPanel() {
           </span>
           <button
             type="button"
+            onClick={toggleFullscreen}
+            className="text-muted transition-colors hover:text-ink"
+            aria-label={fullscreen ? 'Exit full screen' : 'Full screen'}
+            title={fullscreen ? 'Exit full screen' : 'Full screen'}
+          >
+            {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
+          <button
+            type="button"
             onClick={reset}
             className="text-muted transition-colors hover:text-ink"
             aria-label="New conversation"
@@ -161,7 +219,7 @@ export function ChatPanel() {
         </div>
       </div>
 
-      <div className="scroll-slim h-[460px] space-y-4 overflow-y-auto bg-paper px-5 py-5">
+      <div className="chat-scroll scroll-slim min-h-0 flex-1 space-y-4 overflow-y-auto bg-paper px-5 py-5">
         {messages.map((message, index) =>
           message.role === 'user' ? (
             <div key={index} className="flex justify-end">

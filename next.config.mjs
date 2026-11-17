@@ -7,6 +7,10 @@ const nextConfig = {
   basePath,
   images: { unoptimized: true },
   reactStrictMode: true,
+  experimental: {
+    workerThreads: false,
+    cpus: 1,
+  },
 };
 
 export default nextConfig;
