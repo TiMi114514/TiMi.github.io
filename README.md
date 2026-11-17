@@ -9,6 +9,10 @@ Past papers + an AI tutor grounded in your own knowledge base.
 
 The design follows the supplied reference: warm cream canvas, serif display type, paper-stack hero, archive cards, and a tutor session panel with citations.
 
+| Landing | Archive | Tutor |
+| --- | --- | --- |
+| ![Landing](docs/screenshots/home.png) | ![Archive](docs/screenshots/archive.png) | ![Tutor](docs/screenshots/tutor.png) |
+
 ---
 
 ## 1. Quick start (local)
