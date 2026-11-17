@@ -17,7 +17,7 @@ import { samplePapers } from '@/lib/papers';
 function HeroPapers() {
   return (
     <div className="relative hidden h-[420px] lg:block" aria-hidden>
-      <div className="absolute left-0 top-16 w-[250px] -rotate-[9deg] rounded-xl border border-line bg-white/70 p-5 shadow-card">
+      <div className="absolute left-0 top-28 w-[238px] -rotate-[9deg] rounded-xl border border-line bg-white/70 p-5 shadow-card">
         <p className="text-[10px] uppercase tracking-[0.16em] text-muted">Mathematics</p>
         <div className="mt-6 space-y-2">
           <div className="h-1.5 w-4/5 rounded-full bg-line/80" />
@@ -27,7 +27,7 @@ function HeroPapers() {
         <p className="mt-10 text-[11px] text-muted">Paper 1 · 2024</p>
       </div>
 
-      <div className="absolute left-8 top-6 w-[260px] -rotate-[3deg] rounded-xl border border-line bg-white/85 p-5 shadow-card">
+      <div className="absolute left-[66px] top-4 w-[252px] -rotate-[3deg] rounded-xl border border-line bg-white/85 p-5 shadow-card">
         <p className="text-[10px] uppercase tracking-[0.16em] text-muted">Chemistry</p>
         <div className="mt-6 space-y-2">
           <div className="h-1.5 w-3/4 rounded-full bg-line/80" />
@@ -38,7 +38,7 @@ function HeroPapers() {
         <p className="mt-10 text-[11px] text-muted">Paper 3 · 2025</p>
       </div>
 
-      <div className="absolute right-0 top-16 w-[280px] rotate-[7deg] rounded-xl border border-line bg-white p-5 shadow-float">
+      <div className="absolute right-0 top-20 w-[272px] rotate-[7deg] rounded-xl border border-line bg-white p-5 shadow-float">
         <p className="text-[10px] uppercase tracking-[0.16em] text-muted">Physics</p>
         <div className="mt-6 space-y-2">
           <div className="h-1.5 w-5/6 rounded-full bg-line/90" />

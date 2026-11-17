@@ -13,6 +13,19 @@ The design follows the supplied reference: warm cream canvas, serif display type
 | --- | --- | --- |
 | ![Landing](docs/screenshots/home.png) | ![Archive](docs/screenshots/archive.png) | ![Tutor](docs/screenshots/tutor.png) |
 
+**Deployed:** [timi114514.github.io/TiMi.github.io](https://timi114514.github.io/TiMi.github.io/)
+
+Already configured in the Supabase project `wksdpsmxwybsmtjjipxa`:
+
+- `profiles`, `papers`, `downloads` tables with RLS and six starter papers
+- Email/password auth with confirmation required
+- Site URL `https://timi114514.github.io/TiMi.github.io/` and redirect allow-list for `/auth/callback` (plus `http://localhost:3000/**`)
+
+Still environment-dependent:
+
+- RAGFlow runs on the owner's machine (`http://localhost:9380`). The public site therefore reads the archive from Supabase and the tutor reports a connection error until RAGFlow gets a public URL (tunnel or server). On the owner's machine the tutor and the full 700-document archive work.
+- Supabase's built-in email sender has low limits. Add custom SMTP (Authentication → Emails) for reliable verification in production.
+
 ---
 
 ## 1. Quick start (local)
@@ -84,6 +97,8 @@ The app talks to RAGFlow from the browser, so the RAGFlow API server must be rea
 
 ## 4. Deploy to GitHub Pages
 
+**Live:** https://timi114514.github.io/TiMi.github.io/
+
 Repository: `https://github.com/TiMi114514/TiMi.github.io`
 
 Because the repository is not named `TiMi114514.github.io`, Pages serves it as a **project site**:
@@ -92,19 +107,14 @@ Because the repository is not named `TiMi114514.github.io`, Pages serves it as a
 https://timi114514.github.io/TiMi.github.io/
 ```
 
-So `NEXT_PUBLIC_BASE_PATH` must be `/TiMi.github.io`. (If you later rename the repo to `TiMi114514.github.io`, set the base path to empty.)
+So `NEXT_PUBLIC_BASE_PATH` is `/TiMi.github.io` (the workflow defaults to it; the repo variable can override it). If you later rename the repo to `TiMi114514.github.io` or attach a custom domain, set the variable to empty.
 
-1. **Settings → Pages → Build and deployment → Source: GitHub Actions.**
-2. Add repository variables (**Settings → Secrets and variables → Actions → Variables**):
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_RAGFLOW_BASE_URL`
-   - `NEXT_PUBLIC_RAGFLOW_CHAT_ID`
-   - `NEXT_PUBLIC_RAGFLOW_DATASET_ID`
-   - `NEXT_PUBLIC_BASE_PATH` = `/TiMi.github.io` (the workflow already defaults to this when unset)
-3. Add secrets (**Secrets**):
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `NEXT_PUBLIC_RAGFLOW_API_KEY`
-4. Push to `main`. [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) builds the static export and publishes `out/`.
+Pages is configured with **Build and deployment → Source: GitHub Actions**. The workflow has built-in defaults for every non-secret value (Supabase URL + publishable key, RAGFlow chat id / dataset ids, base path), so only the RAGFlow API key needs adding as a repository variable or secret:
+
+- Variable or secret: `NEXT_PUBLIC_RAGFLOW_API_KEY`
+- Optional overrides: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_RAGFLOW_BASE_URL`, `NEXT_PUBLIC_RAGFLOW_CHAT_ID`, `NEXT_PUBLIC_RAGFLOW_DATASET_ID`, `NEXT_PUBLIC_BASE_PATH`
+
+Push to `main` and [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) publishes `out/`.
 
 Local production build:
 
