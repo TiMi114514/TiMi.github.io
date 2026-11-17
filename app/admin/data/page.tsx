@@ -1,8 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Search, Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import { ExternalLink, Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
+import { fetchArchivePreview, type ArchivePreviewData } from '@/lib/ragflow';
 import { supabase } from '@/lib/supabase';
+import { logAdminAction } from '@/lib/admin-audit';
 
 type PaperRow = {
   id: string;
@@ -31,6 +34,20 @@ export default function AdminDataPage() {
   const [form, setForm] = useState(emptyForm);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [archive, setArchive] = useState<ArchivePreviewData | null>(null);
+  const [refreshingArchive, setRefreshingArchive] = useState(false);
+
+  async function loadArchive(force = false) {
+    setRefreshingArchive(true);
+    try {
+      const data = await fetchArchivePreview(force);
+      setArchive(data);
+    } catch {
+      setArchive({ papers: [], datasets: [], totalDocuments: 0 });
+    } finally {
+      setRefreshingArchive(false);
+    }
+  }
 
   async function load() {
     if (!supabase) return;
@@ -48,6 +65,7 @@ export default function AdminDataPage() {
 
   useEffect(() => {
     void load();
+    void loadArchive();
   }, []);
 
   const filtered = useMemo(() => {
@@ -85,6 +103,7 @@ export default function AdminDataPage() {
     }
     setForm(emptyForm);
     setMessage('Paper added.');
+    void logAdminAction('add_paper', form.title.trim(), { subject: form.subject.trim() });
     await load();
   }
 
@@ -95,7 +114,10 @@ export default function AdminDataPage() {
       .update({ published: !row.published })
       .eq('id', row.id);
     if (error) setMessage(error.message);
-    else await load();
+    else {
+      void logAdminAction(row.published ? 'unpublish_paper' : 'publish_paper', row.title);
+      await load();
+    }
   }
 
   async function removePaper(row: PaperRow) {
@@ -103,15 +125,73 @@ export default function AdminDataPage() {
     if (!window.confirm(`Delete "${row.title}"? This cannot be undone.`)) return;
     const { error } = await supabase.from('papers').delete().eq('id', row.id);
     if (error) setMessage(error.message);
-    else await load();
+    else {
+      void logAdminAction('delete_paper', row.title);
+      await load();
+    }
   }
 
   return (
     <div>
       <h1 className="text-[28px] font-semibold tracking-[-0.02em] sm:text-[32px]">Data</h1>
       <p className="mt-1 text-[13px] text-[#71717a]">
-        Curated papers stored in Supabase. These appear when RAGFlow is unreachable.
+        RAGFlow knowledge bases are the primary archive; Supabase papers are the fallback.
       </p>
+
+      <section className="mt-5 overflow-hidden rounded-xl border border-[#e4e4e7] bg-white">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#e4e4e7] px-5 py-3.5">
+          <div>
+            <h2 className="text-[14px] font-semibold">RAGFlow knowledge bases</h2>
+            <p className="mt-0.5 text-[11px] text-[#a1a1aa]">
+              {archive
+                ? `${archive.totalDocuments.toLocaleString('en-US')} documents across ${
+                    archive.datasets.filter((item) => item.count > 0).length
+                  } non-empty datasets`
+                : 'Loading datasets…'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/papers"
+              className="inline-flex items-center gap-1 rounded-md border border-[#e4e4e7] px-2 py-1 text-[11px] text-[#52525b] hover:bg-[#fafafa]"
+            >
+              <ExternalLink className="h-3 w-3" /> Open archive
+            </Link>
+            <button
+              type="button"
+              onClick={() => void loadArchive(true)}
+              disabled={refreshingArchive}
+              className="inline-flex items-center gap-1 rounded-md border border-[#e4e4e7] px-2 py-1 text-[11px] text-[#52525b] hover:bg-[#fafafa] disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3 w-3 ${refreshingArchive ? 'animate-spin' : ''}`} /> Refresh
+            </button>
+          </div>
+        </div>
+        {archive === null ? (
+          <div className="h-24 animate-pulse bg-[#f4f4f5]" />
+        ) : archive.datasets.length === 0 ? (
+          <p className="px-5 py-8 text-center text-[12px] text-[#a1a1aa]">
+            No datasets returned. Check the RAGFlow connection in Settings.
+          </p>
+        ) : (
+          <div className="divide-y divide-[#f0f0f1]">
+            {archive.datasets.map((dataset) => (
+              <div
+                key={dataset.id}
+                className="flex items-center justify-between gap-3 px-5 py-2.5"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-[12.5px] font-medium">{dataset.name}</p>
+                  <p className="truncate font-mono text-[10px] text-[#a1a1aa]">{dataset.id}</p>
+                </div>
+                <span className="shrink-0 rounded-full border border-[#e4e4e7] bg-[#fafafa] px-2 py-0.5 text-[11px] text-[#52525b]">
+                  {dataset.count} docs
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <form onSubmit={addPaper} className="mt-5 rounded-xl border border-[#e4e4e7] bg-white p-4">
         <div className="flex items-center gap-2 text-[13px] font-medium">

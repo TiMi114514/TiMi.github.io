@@ -649,13 +649,13 @@ function mapDocument(doc: RagflowDocument, dataset: { id: string; name: string }
  * Lightweight archive preview: the first documents of a few datasets, enough
  * for large cards without reading the whole knowledge base.
  */
-export async function fetchArchivePreview(): Promise<ArchivePreviewData> {
+export async function fetchArchivePreview(force = false): Promise<ArchivePreviewData> {
   const cfg = getRagflowConfig();
   if (!cfg.baseUrl || !cfg.apiKey) {
     return { papers: [], datasets: [], totalDocuments: 0 };
   }
 
-  if (typeof window !== 'undefined') {
+  if (!force && typeof window !== 'undefined') {
     try {
       const raw = window.sessionStorage.getItem(PREVIEW_CACHE_KEY);
       if (raw) {

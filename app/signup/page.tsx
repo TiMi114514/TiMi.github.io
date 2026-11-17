@@ -121,6 +121,14 @@ export default function SignupPage() {
         statement: teacherMessage.trim(),
         file: teacherFile,
       });
+
+      void supabase.from('email_events').insert({
+        kind: 'teacher_application',
+        recipient: 'jackychen2027@outlook.com',
+        applicant_email: email.trim(),
+        subject: 'New teacher application',
+        status: 'submitted',
+      });
     }
 
     window.sessionStorage.setItem('paperwise.pendingEmail', email.trim());

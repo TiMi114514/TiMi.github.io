@@ -1,14 +1,9 @@
 import {
   Blocks,
-  Bot,
-  Code2,
   Globe,
-  KeyRound,
   Lock,
-  Mail,
   Megaphone,
   Plug,
-  ShieldCheck,
   Workflow,
 } from 'lucide-react';
 import { notFound } from 'next/navigation';
@@ -35,47 +30,12 @@ const sections: Record<
     icon: Plug,
     note: 'Add more integrations later from the repository configuration.',
   },
-  security: {
-    title: 'Security',
-    description:
-      'Email verification is enforced by Supabase Auth. Admin access is enforced by Postgres RLS and is_admin().',
-    icon: ShieldCheck,
-    note: 'Rotate the RAGFlow API key and the Supabase secret keys regularly.',
-  },
-  code: {
-    title: 'Code',
-    description:
-      'The source lives at github.com/TiMi114514/TiMi.github.io. Every push to main builds and deploys the static site.',
-    icon: Code2,
-    note: 'Pull requests can be previewed locally with npm run dev.',
-  },
-  agents: {
-    title: 'Agents',
-    description:
-      'The AI tutor is a RAGFlow chat assistant. Human tutor requests are reviewed under Tutors.',
-    icon: Bot,
-    note: 'Adjust the connection from Admin → Settings.',
-  },
   workflows: {
     title: 'Workflows',
     description:
       'Builds and deployments run as a GitHub Actions workflow. There are no scheduled jobs yet.',
     icon: Workflow,
     note: 'Add scheduled tasks in .github/workflows when you need them.',
-  },
-  emails: {
-    title: 'Emails',
-    description:
-      'Verification emails are sent by Supabase Auth. Configure custom SMTP in Supabase for production volumes.',
-    icon: Mail,
-    note: 'The built-in sender has low hourly limits.',
-  },
-  api: {
-    title: 'API',
-    description:
-      'Data is exposed through Supabase REST (RLS-protected) and RAGFlow HTTP APIs. The static site holds no server.',
-    icon: KeyRound,
-    note: 'Use publishable keys in the browser and keep secret keys server-side.',
   },
   mcp: {
     title: 'MCP',

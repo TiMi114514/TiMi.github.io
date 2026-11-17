@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Check, Download, GraduationCap, Mail, Paperclip, Search, UserRound, X } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/lib/supabase';
+import { logAdminAction } from '@/lib/admin-audit';
 
 type TeacherApplication = {
   id: string;
@@ -169,6 +170,10 @@ export default function AdminTutorsPage() {
     if (error) setMessage(error.message);
     else {
       setMessage(`${row.email} ${status === 'approved' ? 'approved' : 'rejected'}.`);
+      void logAdminAction(`teacher_${status}`, row.email, {
+        application_id: row.id,
+        subjects: row.subjects,
+      });
       await load();
     }
   }
@@ -180,7 +185,13 @@ export default function AdminTutorsPage() {
       .update({ status })
       .eq('id', row.id);
     if (error) setMessage(error.message);
-    else await load();
+    else {
+      void logAdminAction(`request_${status}`, row.email, {
+        request_id: row.id,
+        subject: row.subject,
+      });
+      await load();
+    }
   }
 
   async function openDocument(path: string) {

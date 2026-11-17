@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { ConnectionSettings } from '@/components/ConnectionSettings';
+import { ConnectionTests } from '@/components/admin/ConnectionTests';
 import { useAuth } from '@/components/AuthProvider';
+import { logAdminAction } from '@/lib/admin-audit';
 import { supabase } from '@/lib/supabase';
 
 type AdminRow = { email: string; created_at: string };
@@ -58,6 +60,7 @@ export default function AdminSettingsPage() {
     }
     setEmail('');
     setMessage(`${candidate} can now open the admin dashboard once signed in.`);
+    void logAdminAction('add_admin', candidate);
     await load();
   }
 
@@ -66,7 +69,10 @@ export default function AdminSettingsPage() {
     if (!window.confirm(`Remove admin access for ${row.email}?`)) return;
     const { error } = await supabase.from('admins').delete().eq('email', row.email);
     if (error) setMessage(error.message);
-    else await load();
+    else {
+      void logAdminAction('remove_admin', row.email);
+      await load();
+    }
   }
 
   return (
@@ -77,6 +83,7 @@ export default function AdminSettingsPage() {
       </p>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-2">
+        <ConnectionTests />
         <section className="rounded-xl border border-[#e4e4e7] bg-white">
           <h2 className="border-b border-[#e4e4e7] px-5 py-3.5 text-[14px] font-semibold">
             Administrators

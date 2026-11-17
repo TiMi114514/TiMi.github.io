@@ -24,7 +24,7 @@ The brand mark is the supplied **dx** image (cropped and exported to `public/bra
 
 Already configured in the Supabase project `wksdpsmxwybsmtjjipxa`:
 
-- `profiles`, `papers`, `downloads`, `download_events`, `page_views`, `admins`, `teacher_applications`, `human_tutor_requests` tables with RLS and six starter papers
+- `profiles`, `papers`, `downloads`, `download_events`, `page_views`, `admins`, `teacher_applications`, `human_tutor_requests`, `admin_audit_log`, `email_events` tables with RLS and six starter papers
 - private `teacher-documents` storage bucket (10 MB limit, images/PDF/DOC/DOCX)
 - Email/password auth with confirmation required
 - Site URL `https://timi114514.github.io/TiMi.github.io/` and redirect allow-list for `/auth/callback` and `/auth/reset` (plus `http://localhost:3000/**`)
@@ -124,10 +124,15 @@ Working sections:
 - **Overview** — seven live cards (visits, accounts, 30-day downloads, pending tutor reviews, learners online, papers, all-time downloads) plus recent account and guest downloads.
 - **App Users** — every Supabase Auth account with verification status and last sign-in; filter by verified/pending and export the filtered list to CSV.
 - **Tutors** — approve/reject teacher applications (with statement and attachment) and triage human tutor requests (`pending → contacted → closed`); search across both lists, export CSV, and see pending counts as a sidebar badge.
-- **Data** — add, publish/unpublish and delete fallback papers in Supabase.
+- **Data** — RAGFlow knowledge-base overview (names, counts, ids, refresh) plus add, publish/unpublish and delete fallback papers in Supabase.
 - **Logs** — recent signed-in and guest downloads plus raw page views, with search and CSV export.
-- **Settings** — add/remove administrators, inspect the deployment and adjust the admin-only RAGFlow connection override (the panel is no longer shown to visitors).
-- Marketing, Domains, Integrations, Security, Code, Agents, Workflows, Emails, API, MCP, Secrets render structured placeholders.
+- **Emails** — ready-to-copy templates for teacher approval/rejection, tutor replies and verification reminders; recipients come from pending applications/requests; teacher-application forwarding events are listed.
+- **API** — RAGFlow/Supabase connection summary, live connection tests, endpoint reference and copyable cURL examples.
+- **Security** — current admin session, security checklist, recent audit log, administrator list and a global sign-out action.
+- **Code** — copy-ready Supabase/RAGFlow snippets and the build-time environment variable checklist.
+- **Agents** — the RAGFlow `DQ · Subject` assistant registry with assistant ids, linked knowledge bases, document counts, copy buttons and a direct link to the tutor.
+- **Settings** — add/remove administrators, connection health tests, inspect the deployment and adjust the admin-only RAGFlow connection override (the panel is no longer shown to visitors).
+- Marketing, Domains, Integrations, Workflows, MCP and Secrets render structured placeholders.
 
 ![Admin tutors](docs/screenshots/admin-tutors.png)
 
@@ -295,14 +300,15 @@ app/
   forgot-password/page.tsx  request a reset link
   auth/reset/page.tsx   choose a new password from the recovery link
   account/page.tsx      profile, verification status, teacher application, downloads
-  admin/                Analytics, Overview, App Users, Tutors, Data, Logs, Settings, placeholders
+  admin/                Analytics, Overview, App Users, Tutors, Data, Logs, Emails, API, Security, Code, Agents, Settings, placeholders
   auth/callback/page.tsx  Supabase email-confirmation landing
-components/             Header, HomeStats, Pomodoro, PomodoroProvider, HeroPapers, PaperCard, ChatPanel, TutorWorkspace, TutorTabs, AdminShell, AnalyticsTracker
+components/             Header, HomeStats, Pomodoro, PomodoroProvider, HeroPapers, PaperCard, ChatPanel, TutorWorkspace, TutorTabs, AdminShell, AnalyticsTracker, admin helpers
 lib/
   supabase.ts           client + appUrl()
   ragflow.ts            OpenAI-compatible chat, assistant list, retrieval citations, preview/search/download
   paper-meta.ts         filename parser for year, exam season and paper type
   session.ts            shared anonymous browser-session id
+  admin-audit.ts        best-effort admin action audit trail
   teacher-email.ts      FormSubmit forwarding for teacher applications
   analytics.ts          admin analytics types, country estimate, formatters
   pomodoro.ts           timer helpers, defaults and duration clamping
