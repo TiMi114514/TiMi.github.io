@@ -4,24 +4,8 @@ import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from './AuthProvider';
 import { guessCountry } from '@/lib/analytics';
+import { getBrowserSessionId } from '@/lib/session';
 import { supabase } from '@/lib/supabase';
-
-const SESSION_KEY = 'paperwise.analytics.session';
-
-function getSessionId(): string {
-  try {
-    const existing = window.sessionStorage.getItem(SESSION_KEY);
-    if (existing) return existing;
-    const id =
-      typeof crypto !== 'undefined' && 'randomUUID' in crypto
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    window.sessionStorage.setItem(SESSION_KEY, id);
-    return id;
-  } catch {
-    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  }
-}
 
 /**
  * Privacy-friendly page view counter: stores only the path, an anonymous
@@ -41,7 +25,7 @@ export function AnalyticsTracker() {
 
     const row = {
       path: pathname,
-      session_id: getSessionId(),
+      session_id: getBrowserSessionId(),
       user_id: user?.id ?? null,
       country: guessCountry(),
       referrer: typeof document !== 'undefined' ? document.referrer || null : null,

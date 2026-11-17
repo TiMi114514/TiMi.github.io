@@ -11,6 +11,7 @@ import {
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { HeroPapers } from '@/components/HeroPapers';
+import { HomeStats } from '@/components/HomeStats';
 import { PaperCard } from '@/components/PaperCard';
 import { samplePapers } from '@/lib/papers';
 
@@ -120,6 +121,10 @@ export default function HomePage() {
             <div className="animate-fade-up">
               <HeroPapers />
             </div>
+          </div>
+
+          <div className="mt-12">
+            <HomeStats />
           </div>
         </section>
 

@@ -7,6 +7,7 @@ Past papers, an AI tutor grounded in your own knowledge base, and human tutors o
 - **AI tutor**: RAGFlow OpenAI-compatible endpoint for clean final answers, with retrieval citations and a subject/database selector
 - **Human tutors**: requests are stored in Supabase and reviewed in the admin dashboard
 - **Archive**: RAGFlow dataset documents (fallback: Supabase `papers` table, then sample data)
+- **Archive search**: lightweight preview plus targeted filename search with year, season, subject and paper-type filters
 - **Study tools**: Pomodoro timer with a black full-screen focus mode, plus full-screen chat
 
 The brand mark is the supplied **dx** image (cropped and exported to `public/brand-mark.png`, favicon and Apple touch icon). The interface keeps the warm cream canvas and editorial serif type, now using Source Serif 4 for flatter, wider display letterforms.
@@ -23,7 +24,7 @@ The brand mark is the supplied **dx** image (cropped and exported to `public/bra
 
 Already configured in the Supabase project `wksdpsmxwybsmtjjipxa`:
 
-- `profiles`, `papers`, `downloads`, `page_views`, `admins`, `teacher_applications`, `human_tutor_requests` tables with RLS and six starter papers
+- `profiles`, `papers`, `downloads`, `download_events`, `page_views`, `admins`, `teacher_applications`, `human_tutor_requests` tables with RLS and six starter papers
 - private `teacher-documents` storage bucket (10 MB limit, images/PDF/DOC/DOCX)
 - Email/password auth with confirmation required
 - Site URL `https://timi114514.github.io/TiMi.github.io/` and redirect allow-list for `/auth/callback` and `/auth/reset` (plus `http://localhost:3000/**`)
@@ -69,11 +70,12 @@ Browsing and downloading are public — no account is required.
 
 - Guests are limited to **one document per second**. The timestamp lives in `sessionStorage` and the check runs before the RAGFlow or Supabase download starts.
 - This is a client-side throttle; a static GitHub Pages site cannot enforce a hard server-side rate limit. If you need strict enforcement, proxy downloads through a Cloudflare Worker or Supabase Edge Function.
-- Signed-in users are not throttled, and their downloads are logged to the `downloads` table.
-- The archive lists **every document in every dataset**, grouped by dataset and shown under its original file name. There is no title parsing, no year guessing and no renaming.
-- Each dataset shows 12 rows first and has its own "Show more" control; all documents are loaded up front, so search covers the full archive.
-- Archive responses are cached in `sessionStorage` for 30 minutes; the Refresh button bypasses the cache and re-reads all dataset pages.
-- A-Level Chinese 9868 currently has 0 documents, so it has no group; the other eight datasets contain 4,503 documents.
+- Signed-in users are not throttled, and their downloads are logged to the `downloads` table. Guest downloads are recorded in `download_events` so the homepage counters include them.
+- **No full archive traversal on page load.** `/papers` fetches a lightweight preview — the first documents of up to four datasets — and shows them as large download cards.
+- **Further search is targeted.** The filename box plus filters for **year**, **exam season**, **dataset/subject** and **paper type** build a RAGFlow `keywords` query per dataset instead of downloading everything. Results are grouped by dataset and keep the original file names.
+- File names such as `9700_w19_ms_22.pdf` and `9990_m26_gt.pdf` are parsed for filters: year (2019 / 2026), season (June / March), type (question paper `qp`, mark scheme `ms`, grade thresholds `gt`, examiner report `er`, …).
+- The preview is cached for 30 minutes. A-Level Chinese 9868 has 0 documents, so it has no card; the other eight datasets contain 4,503 documents.
+- The homepage shows two live counters from `home_stats()`: users/files downloaded in the last 30 days, and learners online now (distinct sessions with page views in the last five minutes).
 
 ## Password reset
 
@@ -193,7 +195,7 @@ Copy `.env.example` to `.env.local` and fill in:
 The app talks to RAGFlow from the browser, so the RAGFlow API server must be reachable from the visitor's browser and allow CORS. Both are true for the local instance tested here (`access-control-allow-origin: *`).
 
 1. Create an **API key** in RAGFlow user settings.
-2. Ingest your past papers and course material into one or more **datasets** (knowledge bases). The archive reads **every dataset and every page of documents**; `NEXT_PUBLIC_RAGFLOW_DATASET_ID` is only a fallback when the datasets API is unavailable.
+2. Ingest your past papers and course material into one or more **datasets** (knowledge bases). The archive no longer reads every page on load: `/papers` fetches a preview page from up to four datasets, and detailed searches use RAGFlow's `keywords` filter. `NEXT_PUBLIC_RAGFLOW_DATASET_ID` is only a fallback when the datasets API is unavailable.
 3. Create one **chat assistant per subject**, named `DQ · <Subject>` (for example `DQ · Chemistry`), and bind it to that subject's dataset. A `DQ · General` assistant can bind several datasets. The tutor lists every assistant with the `DQ · ` prefix, so a new one appears in the selector automatically. Datasets with zero parsed chunks cannot be bound to an assistant until they are parsed.
 4. The public tutor uses the **OpenAI-compatible** endpoint for answers:
    `POST {baseUrl}/api/v1/chats_openai/{chat_id}/chat/completions` with `{model, messages, stream}`. RAGFlow expects `model` to be the assistant's internal `llm_id`; the app resolves it via `GET /api/v1/chats` and caches it. This endpoint returns only the final answer, so the model's chain of thought is not shown. Citations are fetched separately from `POST /api/v1/retrieval` using `document_keyword`.
@@ -201,11 +203,11 @@ The app talks to RAGFlow from the browser, so the RAGFlow API server must be rea
 5. **Admin-only connection override**: **Admin → Settings → RAGFlow connection** stores the base URL, key, chat id, dataset ids and mode in the admin browser's `localStorage`. Visitors never see this panel.
 5. **Archive API**:
    ```
-   GET  {baseUrl}/api/v1/datasets?page=1&page_size=100                 # dataset names → subjects
-   GET  {baseUrl}/api/v1/datasets/{dataset_id}/documents?page=1&page_size=100
+   GET  {baseUrl}/api/v1/datasets?page=1&page_size=100                 # dataset names + counts
+   GET  {baseUrl}/api/v1/datasets/{dataset_id}/documents?page=1&page_size=100&keywords=9990_m26
    GET  {baseUrl}/api/v1/datasets/{dataset_id}/documents/{document_id} # authenticated download
    ```
-   File names are shown exactly as stored (`9990_m26_gt.pdf`), grouped by dataset name; no year, paper type or title parsing is applied. If RAGFlow is unreachable, the app reads the Supabase `papers` table, then falls back to sample cards.
+   File names are shown exactly as stored (`9990_m26_gt.pdf`), grouped by dataset name; the filters parse year, exam season and paper type from the name but the displayed title remains the raw filename. If RAGFlow is unreachable, the app falls back to the Supabase `papers` table.
 6. **CORS**: if your deployment does not send `Access-Control-Allow-Origin` for the site origin, put a small reverse proxy in front (Nginx `add_header 'Access-Control-Allow-Origin' '*'` plus preflight handling) or use a tunnel with CORS.
 7. **Localhost isn't public**: a site served from GitHub Pages cannot reach `http://localhost:9380` on your machine. Until RAGFlow is exposed:
    - Cloudflare Tunnel / ngrok / frp → put the public URL in **Admin → Settings → RAGFlow connection**, or
@@ -285,7 +287,7 @@ Browser (GitHub Pages, static)
 ```
 app/
   page.tsx              landing page (hero, archive preview, tutor section)
-  papers/page.tsx       public archive: search, filters, guest-throttled downloads
+  papers/page.tsx       archive: preview cards + targeted filename/year/season/type search
   tutor/page.tsx        AI tutor with auth gating and knowledge-base selector
   tutor/human/page.tsx  human tutor request form + request history
   pomodoro/page.tsx     focus/break timer with adjustable durations
@@ -295,10 +297,12 @@ app/
   account/page.tsx      profile, verification status, teacher application, downloads
   admin/                Analytics, Overview, App Users, Tutors, Data, Logs, Settings, placeholders
   auth/callback/page.tsx  Supabase email-confirmation landing
-components/             Header, Pomodoro, PomodoroProvider, HeroPapers, PaperCard, ChatPanel, TutorWorkspace, TutorTabs, AdminShell, AnalyticsTracker
+components/             Header, HomeStats, Pomodoro, PomodoroProvider, HeroPapers, PaperCard, ChatPanel, TutorWorkspace, TutorTabs, AdminShell, AnalyticsTracker
 lib/
   supabase.ts           client + appUrl()
-  ragflow.ts            OpenAI-compatible chat, assistant list, retrieval citations, dataset downloads
+  ragflow.ts            OpenAI-compatible chat, assistant list, retrieval citations, preview/search/download
+  paper-meta.ts         filename parser for year, exam season and paper type
+  session.ts            shared anonymous browser-session id
   teacher-email.ts      FormSubmit forwarding for teacher applications
   analytics.ts          admin analytics types, country estimate, formatters
   pomodoro.ts           timer helpers, defaults and duration clamping
@@ -326,5 +330,8 @@ supabase/schema.sql     tables, RLS, functions, storage bucket, starter rows
 | Pomodoro fullscreen is blocked | The black overlay still opens; allow fullscreen in the browser to enter the real fullscreen mode |
 | Guest cannot download a second paper immediately | Expected: guests are limited to one document per second |
 | Tutor request fails with CORS | Allow the Pages origin on RAGFlow, or use a CORS-enabled tunnel |
-| Archive shows demo cards | No RAGFlow dataset id and no Supabase papers rows; run `schema.sql` and/or set the dataset id |
+| Archive only shows a few cards | Expected: the preview is intentionally small; use the search filters for the full archive |
+| Detailed search misses a file | Use a substring of the raw name (for example `9990_m26`), or clear the year/season/type filters |
+| Homepage counters stay at 0 | Downloads are counted after the first successful download; only the last 30 days are included |
+| Archive shows demo cards | RAGFlow is unreachable and the Supabase `papers` table is empty; run `schema.sql` and/or check the connection |
 | `npm ci` fails in Actions | Commit `package-lock.json` (`npm install` locally first) |
