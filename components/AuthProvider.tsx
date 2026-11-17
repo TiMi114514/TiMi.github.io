@@ -10,6 +10,7 @@ type AuthState = {
   loading: boolean;
   configured: boolean;
   verified: boolean;
+  isAdmin: boolean;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
 };
@@ -19,6 +20,8 @@ const AuthContext = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const user = session?.user ?? null;
 
   useEffect(() => {
     if (!supabase) {
@@ -45,14 +48,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!supabase || !user) {
+      setIsAdmin(false);
+      return;
+    }
+
+    let active = true;
+
+    supabase
+      .rpc('is_admin')
+      .then(
+        ({ data, error }) => {
+          if (!active) return;
+          setIsAdmin(!error && data === true);
+        },
+        () => {
+          if (active) setIsAdmin(false);
+        },
+      );
+
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
+
   const value = useMemo<AuthState>(() => {
-    const user = session?.user ?? null;
     return {
       user,
       session,
       loading,
       configured: authConfigured,
       verified: Boolean(user?.email_confirmed_at || user?.confirmed_at),
+      isAdmin,
       signOut: async () => {
         if (supabase) await supabase.auth.signOut();
       },
@@ -62,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(data.session);
       },
     };
-  }, [session, loading]);
+  }, [user, session, loading, isAdmin]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

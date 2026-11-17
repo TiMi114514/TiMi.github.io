@@ -26,6 +26,38 @@ Still environment-dependent:
 - RAGFlow runs on the owner's machine (`http://localhost:9380`). The public site therefore reads the archive from Supabase and the tutor reports a connection error until RAGFlow gets a public URL (tunnel or server). On the owner's machine the tutor and the full 700-document archive work.
 - Supabase's built-in email sender has low limits. Add custom SMTP (Authentication → Emails) for reliable verification in production.
 
+## Admin dashboard
+
+Sign in with **JackyChen2027@outlook.com** and open **/admin** (an **Admin** link appears in the header for administrators).
+
+![Admin analytics](docs/screenshots/admin.png)
+
+The shell mirrors the reference: search, Overview, App Users, Data, Analytics, Marketing, Domains, Integrations, Security, Code, Agents, Workflows, Emails, Logs, API, Settings, MCP and Secrets.
+
+Working sections:
+
+- **Analytics** — total visits, unique visitors, average visit duration, live visitors, daily traffic chart, page traffic and country breakdown, 7/14/30/90-day ranges, tabs for Traffic overview / Sales overview / Session recordings.
+- **Overview** — traffic, account, archive and download summary.
+- **App Users** — every Supabase Auth account with verification status and last sign-in.
+- **Data** — add, publish/unpublish and delete fallback papers in Supabase.
+- **Logs** — recent downloads and raw page views.
+- **Settings** — add/remove administrators and inspect the deployment configuration.
+- Marketing, Domains, Integrations, Security, Code, Agents, Workflows, Emails, API, MCP, Secrets render structured placeholders.
+
+How the admin access works:
+
+```sql
+-- supabase/schema.sql
+create table public.admins (email text primary key, created_at timestamptz default now());
+create function public.is_admin() returns boolean ... -- checks auth.jwt()->>'email'
+```
+
+- Every admin RPC (`admin_analytics`, `admin_list_users`) checks `is_admin()` and is `security definer`.
+- RLS grants admins read access to `page_views`, `downloads`, `profiles` and full access to `papers`; everyone else is unchanged.
+- Manage the allow-list in **Admin → Settings** or by inserting into `admins`.
+
+Traffic collection is first-party and privacy-friendly: `page_views` stores only the path, an anonymous session id, an optional user id, the referrer, and a coarse country estimate from the browser time zone. No IP addresses and no cookies.
+
 ---
 
 ## 1. Quick start (local)

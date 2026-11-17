@@ -13,7 +13,7 @@ const nav = [
 export function Header() {
   const pathname = usePathname() ?? '';
   const router = useRouter();
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, signOut, isAdmin } = useAuth();
 
   const displayName =
     (user?.user_metadata?.display_name as string | undefined) ||
@@ -57,6 +57,14 @@ export function Header() {
             <span className="h-8 w-24 animate-pulse rounded-full bg-soft" />
           ) : user ? (
             <>
+              {isAdmin ? (
+                <Link
+                  href="/admin"
+                  className="hidden rounded-full border border-line bg-paper/70 px-3 py-2 text-[12.5px] text-ink transition-colors hover:bg-white sm:inline-flex"
+                >
+                  Admin
+                </Link>
+              ) : null}
               <span className="hidden max-w-[160px] truncate text-muted sm:inline">
                 {displayName}
               </span>
