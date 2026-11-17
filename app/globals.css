@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --cream: #f7f2ea;
+  --paper: #fffdf9;
+  --ink: #16150f;
+  --muted: #6f6a5f;
+  --line: #e6dfd2;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--cream);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: #16150f;
+  color: #f7f2ea;
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-[1120px] px-5 sm:px-8;
+  }
+
+  .eyebrow {
+    @apply text-[11px] font-medium uppercase tracking-[0.22em] text-muted;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full text-[13.5px] font-medium whitespace-nowrap transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-dark {
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full bg-ink px-5 py-2.5 text-[13.5px] font-medium text-cream transition-colors duration-150 hover:bg-[#2b2921] disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-light {
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full border border-line bg-paper/70 px-5 py-2.5 text-[13.5px] font-medium text-ink transition-colors duration-150 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full border border-line bg-transparent px-4 py-2 text-[13.5px] font-medium text-ink transition-colors duration-150 hover:bg-white/70 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-line bg-white/80 px-3.5 py-2.5 text-[14px] text-ink placeholder:text-muted/60 focus:border-ink/40 focus:outline-none focus:ring-2 focus:ring-ink/10;
+  }
+
+  .card {
+    @apply rounded-2xl border border-line bg-paper shadow-card;
+  }
+
+  .link-underline {
+    @apply underline decoration-line underline-offset-4 transition-colors hover:decoration-ink;
+  }
+}
+
+/* Markdown rendered inside tutor answers */
+.prose-pw {
+  @apply text-[14px] leading-relaxed text-ink;
+}
+.prose-pw > * + * {
+  @apply mt-2.5;
+}
+.prose-pw h1,
+.prose-pw h2,
+.prose-pw h3 {
+  @apply font-display text-[16px] font-normal;
+}
+.prose-pw strong {
+  @apply font-semibold;
+}
+.prose-pw ul,
+.prose-pw ol {
+  @apply ml-4 list-outside space-y-1;
+}
+.prose-pw ul {
+  @apply list-disc;
+}
+.prose-pw ol {
+  @apply list-decimal;
+}
+.prose-pw code {
+  @apply rounded bg-soft px-1 py-0.5 font-mono text-[12.5px];
+}
+.prose-pw pre {
+  @apply overflow-x-auto rounded-xl bg-ink p-3 text-[12.5px] text-cream;
+}
+.prose-pw pre code {
+  @apply bg-transparent p-0 text-inherit;
+}
+.prose-pw blockquote {
+  @apply border-l-2 border-line pl-3 text-muted;
+}
+.prose-pw a {
+  @apply underline underline-offset-2;
+}
+.prose-pw table {
+  @apply w-full border-collapse text-[13px];
+}
+.prose-pw th,
+.prose-pw td {
+  @apply border border-line px-2 py-1 text-left;
+}
+
+/* Thin scrollbar for chat panes */
+.scroll-slim {
+  scrollbar-width: thin;
+  scrollbar-color: #d6cebf transparent;
+}
+.scroll-slim::-webkit-scrollbar {
+  width: 6px;
+}
+.scroll-slim::-webkit-scrollbar-thumb {
+  background: #d6cebf;
+  border-radius: 999px;
+}
