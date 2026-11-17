@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
+import { Download, Search } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 type UserRow = {
@@ -17,6 +17,7 @@ export default function AdminUsersPage() {
   const [rows, setRows] = useState<UserRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [status, setStatus] = useState<'all' | 'verified' | 'pending'>('all');
 
   useEffect(() => {
     if (!supabase) return;
@@ -39,13 +40,44 @@ export default function AdminUsersPage() {
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return rows ?? [];
-    return (rows ?? []).filter(
-      (row) =>
+    return (rows ?? []).filter((row) => {
+      if (status === 'verified' && !row.confirmed) return false;
+      if (status === 'pending' && row.confirmed) return false;
+      if (!needle) return true;
+      return (
         row.email.toLowerCase().includes(needle) ||
-        row.display_name.toLowerCase().includes(needle),
-    );
-  }, [rows, query]);
+        row.display_name.toLowerCase().includes(needle)
+      );
+    });
+  }, [rows, query, status]);
+
+  function exportCsv() {
+    const header = ['Email', 'Name', 'Status', 'Joined', 'Last sign-in'];
+    const lines = [
+      header,
+      ...filtered.map((row) => [
+        row.email,
+        row.display_name,
+        row.confirmed ? 'Verified' : 'Pending',
+        row.created_at,
+        row.last_sign_in_at ?? '',
+      ]),
+    ];
+    const csv = lines
+      .map((line) =>
+        line.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(','),
+      )
+      .join('\r\n');
+    const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `app-users-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  }
 
   return (
     <div>
@@ -68,6 +100,24 @@ export default function AdminUsersPage() {
         <span className="text-[12px] text-[#71717a]">
           {rows === null ? 'Loading…' : `${filtered.length} of ${rows.length}`}
         </span>
+        <select
+          value={status}
+          onChange={(event) => setStatus(event.target.value as 'all' | 'verified' | 'pending')}
+          className="rounded-lg border border-[#e4e4e7] bg-white px-2.5 py-2 text-[12px] text-[#3f3f46] outline-none"
+          aria-label="Filter by verification status"
+        >
+          <option value="all">All accounts</option>
+          <option value="verified">Verified</option>
+          <option value="pending">Pending</option>
+        </select>
+        <button
+          type="button"
+          onClick={exportCsv}
+          disabled={filtered.length === 0}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-[#e4e4e7] bg-white px-3 py-2 text-[12px] text-[#3f3f46] transition-colors hover:bg-[#fafafa] disabled:opacity-50"
+        >
+          <Download className="h-3.5 w-3.5" /> Export CSV
+        </button>
       </div>
 
       {error ? (

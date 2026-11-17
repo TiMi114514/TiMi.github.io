@@ -515,3 +515,97 @@ $$;
 
 revoke all on function public.home_stats() from public;
 grant execute on function public.home_stats() to anon, authenticated;
+
+-- ============================================================
+-- Admin download analytics
+-- ============================================================
+
+create or replace function public.admin_download_analytics(p_days int default 30)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_days int := greatest(coalesce(p_days, 30), 1);
+  v_start timestamptz := now() - make_interval(days => v_days);
+  v_prev_start timestamptz := v_start - make_interval(days => v_days);
+  v_result jsonb;
+begin
+  if not public.is_admin() then
+    raise exception 'not authorized';
+  end if;
+
+  with filtered as (
+    select coalesce(user_id::text, session_id) as actor,
+           file_name as name,
+           dataset,
+           created_at
+      from public.download_events
+     where created_at >= v_start
+    union all
+    select user_id::text as actor,
+           paper_title as name,
+           null as dataset,
+           created_at
+      from public.downloads
+     where created_at >= v_start
+  ),
+  previous as (
+    select coalesce(user_id::text, session_id) as actor, created_at
+      from public.download_events
+     where created_at >= v_prev_start and created_at < v_start
+    union all
+    select user_id::text, created_at
+      from public.downloads
+     where created_at >= v_prev_start and created_at < v_start
+  ),
+  totals as (
+    select
+      (select count(*) from filtered) as downloads,
+      (select count(distinct actor) from filtered) as users,
+      (select count(*) from previous) as prev_downloads,
+      (select count(distinct actor) from previous) as prev_users
+  ),
+  series as (
+    select d::date as day, count(f.created_at) as downloads
+    from generate_series(v_start::date, now()::date, interval '1 day') d
+    left join filtered f on f.created_at::date = d::date
+    group by 1
+    order by 1
+  ),
+  top_files as (
+    select name, count(*) as downloads
+    from filtered
+    where name is not null and name <> ''
+    group by 1
+    order by 2 desc
+    limit 8
+  ),
+  by_dataset as (
+    select coalesce(dataset, 'Unknown') as dataset, count(*) as downloads
+    from filtered
+    group by 1
+    order by 2 desc
+    limit 8
+  )
+  select jsonb_build_object(
+    'days', v_days,
+    'total_downloads', totals.downloads,
+    'unique_downloaders', totals.users,
+    'prev_total_downloads', totals.prev_downloads,
+    'prev_unique_downloaders', totals.prev_users,
+    'series', coalesce((select jsonb_agg(jsonb_build_object('date', day, 'downloads', downloads)) from series), '[]'::jsonb),
+    'top_files', coalesce((select jsonb_agg(jsonb_build_object('name', name, 'downloads', downloads)) from top_files), '[]'::jsonb),
+    'datasets', coalesce((select jsonb_agg(jsonb_build_object('dataset', dataset, 'downloads', downloads)) from by_dataset), '[]'::jsonb)
+  )
+  into v_result
+  from totals;
+
+  return v_result;
+end;
+$$;
+
+revoke all on function public.admin_download_analytics(int) from public;
+grant execute on function public.admin_download_analytics(int) to authenticated;

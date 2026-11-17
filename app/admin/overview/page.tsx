@@ -2,11 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowUpRight, Database, Download, FileText, Users } from 'lucide-react';
+import {
+  Activity,
+  ArrowUpRight,
+  Database,
+  Download,
+  FileText,
+  GraduationCap,
+  Users,
+} from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { formatNumber } from '@/lib/analytics';
 
-type DownloadRow = { id: number; paper_title: string | null; created_at: string };
+type DownloadRow = { key: string; title: string | null; created_at: string };
 
 export default function AdminOverviewPage() {
   const [visits, setVisits] = useState<number | null>(null);
@@ -14,29 +22,83 @@ export default function AdminOverviewPage() {
   const [papers, setPapers] = useState<number | null>(null);
   const [downloads, setDownloads] = useState<DownloadRow[]>([]);
   const [downloadCount, setDownloadCount] = useState<number | null>(null);
+  const [downloads30d, setDownloads30d] = useState<number | null>(null);
+  const [liveLearners, setLiveLearners] = useState<number | null>(null);
+  const [pendingTutors, setPendingTutors] = useState<number | null>(null);
 
   useEffect(() => {
     if (!supabase) return;
     let active = true;
 
     async function load() {
-      const [analytics, userList, paperCount, downloadCountResult, recent] = await Promise.all([
+      const [
+        analytics,
+        userList,
+        paperCount,
+        downloadCountResult,
+        eventCountResult,
+        signedRecent,
+        guestRecent,
+        homeStats,
+        teacherPending,
+        requestPending,
+      ] = await Promise.all([
         supabase!.rpc('admin_analytics', { p_days: 7 }),
         supabase!.rpc('admin_list_users'),
         supabase!.from('papers').select('id', { count: 'exact', head: true }),
         supabase!.from('downloads').select('id', { count: 'exact', head: true }),
+        supabase!.from('download_events').select('id', { count: 'exact', head: true }),
         supabase!
           .from('downloads')
           .select('id, paper_title, created_at')
           .order('created_at', { ascending: false })
           .limit(6),
+        supabase!
+          .from('download_events')
+          .select('id, file_name, created_at')
+          .order('created_at', { ascending: false })
+          .limit(6),
+        supabase!.rpc('home_stats'),
+        supabase!
+          .from('teacher_applications')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'pending'),
+        supabase!
+          .from('human_tutor_requests')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'pending'),
       ]);
       if (!active) return;
+      const signedRows = ((signedRecent.data as {
+        id: number;
+        paper_title: string | null;
+        created_at: string;
+      }[]) ?? []).map((row) => ({
+        key: `account-${row.id}`,
+        title: row.paper_title,
+        created_at: row.created_at,
+      }));
+      const guestRows = ((guestRecent.data as {
+        id: number;
+        file_name: string | null;
+        created_at: string;
+      }[]) ?? []).map((row) => ({
+        key: `guest-${row.id}`,
+        title: row.file_name,
+        created_at: row.created_at,
+      }));
       setVisits(Number(analytics.data?.total_visits ?? 0));
       setUsers(Array.isArray(userList.data) ? userList.data.length : 0);
       setPapers(paperCount.count ?? 0);
-      setDownloadCount(downloadCountResult.count ?? 0);
-      setDownloads((recent.data as DownloadRow[] | null) ?? []);
+      setDownloadCount((downloadCountResult.count ?? 0) + (eventCountResult.count ?? 0));
+      setDownloads(
+        [...signedRows, ...guestRows]
+          .sort((a, b) => b.created_at.localeCompare(a.created_at))
+          .slice(0, 6),
+      );
+      setDownloads30d(Number(homeStats.data?.download_files ?? 0));
+      setLiveLearners(Number(homeStats.data?.live_learners ?? 0));
+      setPendingTutors((teacherPending.count ?? 0) + (requestPending.count ?? 0));
     }
 
     void load();
@@ -48,8 +110,11 @@ export default function AdminOverviewPage() {
   const cards = [
     { label: 'Visits, last 7 days', value: visits, href: '/admin', icon: ArrowUpRight },
     { label: 'Registered users', value: users, href: '/admin/users', icon: Users },
+    { label: 'Downloads, last 30 days', value: downloads30d, href: '/admin?tab=downloads', icon: Download },
+    { label: 'Pending tutor reviews', value: pendingTutors, href: '/admin/tutors', icon: GraduationCap },
+    { label: 'Learners online now', value: liveLearners, href: '/admin', icon: Activity },
     { label: 'Papers in archive', value: papers, href: '/admin/data', icon: Database },
-    { label: 'Downloads logged', value: downloadCount, href: '/admin/logs', icon: Download },
+    { label: 'Downloads logged (all time)', value: downloadCount, href: '/admin/logs', icon: FileText },
   ];
 
   return (
@@ -59,7 +124,7 @@ export default function AdminOverviewPage() {
         A quick summary of traffic, accounts and the archive.
       </p>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {cards.map((card) => (
           <Link
             key={card.label}
@@ -94,8 +159,8 @@ export default function AdminOverviewPage() {
               </p>
             ) : (
               downloads.map((row) => (
-                <div key={row.id} className="flex items-center justify-between gap-4 px-5 py-3">
-                  <span className="truncate text-[13px]">{row.paper_title || 'Past paper'}</span>
+                <div key={row.key} className="flex items-center justify-between gap-4 px-5 py-3">
+                  <span className="truncate text-[13px]">{row.title || 'Past paper'}</span>
                   <span className="shrink-0 text-[11.5px] text-[#a1a1aa]">
                     {new Date(row.created_at).toLocaleDateString('en-US', {
                       month: 'short',

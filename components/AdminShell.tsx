@@ -27,6 +27,7 @@ import {
   Workflow,
 } from 'lucide-react';
 import { useAuth } from './AuthProvider';
+import { supabase } from '@/lib/supabase';
 
 const navItems = [
   { href: '/admin/overview', label: 'Overview', icon: LayoutDashboard },
@@ -59,10 +60,47 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, loading, isAdmin, signOut } = useAuth();
   const [query, setQuery] = useState('');
+  const [pendingTutors, setPendingTutors] = useState(0);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
   }, [loading, user, router]);
+
+  useEffect(() => {
+    if (!supabase || !isAdmin) return;
+    let active = true;
+
+    async function loadBadges() {
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const [teachers, requests] = await Promise.all([
+          supabase!
+            .from('teacher_applications')
+            .select('id', { count: 'exact', head: true })
+            .eq('status', 'pending'),
+          supabase!
+            .from('human_tutor_requests')
+            .select('id', { count: 'exact', head: true })
+            .eq('status', 'pending'),
+        ]);
+        if (!active) return;
+        const total = (teachers.count ?? 0) + (requests.count ?? 0);
+        if (total > 0 || attempt === 2) {
+          setPendingTutors(total);
+          return;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 800));
+      }
+    }
+
+    void loadBadges();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void loadBadges();
+    }, 5 * 60_000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [isAdmin]);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -152,7 +190,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             >
               <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.8} />
               <span className="flex-1 truncate">{item.label}</span>
-              {item.badge ? (
+              {item.href === '/admin/tutors' && pendingTutors > 0 ? (
+                <span className="rounded-md bg-[#fef3c7] px-1.5 py-0.5 text-[10px] font-medium text-[#b45309]">
+                  {pendingTutors}
+                </span>
+              ) : item.badge ? (
                 <span className="rounded-md bg-[#dbe7fb] px-1.5 py-0.5 text-[10px] font-medium text-[#2563eb]">
                   {item.badge}
                 </span>

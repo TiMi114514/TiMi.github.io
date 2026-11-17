@@ -120,12 +120,12 @@ The shell mirrors the reference: search, Overview, App Users, Tutors, Data, Anal
 
 Working sections:
 
-- **Analytics** — total visits, unique visitors, average visit duration, live visitors, daily traffic chart, page traffic and country breakdown, 7/14/30/90-day ranges, tabs for Traffic overview / Sales overview / Session recordings.
-- **Overview** — traffic, account, archive and download summary.
-- **App Users** — every Supabase Auth account with verification status and last sign-in.
-- **Tutors** — approve/reject teacher applications (with statement and attachment) and triage human tutor requests (`pending → contacted → closed`).
+- **Analytics** — total visits, unique visitors, average visit duration, live visitors, daily traffic chart, page traffic and country breakdown, 7/14/30/90-day ranges, tabs for Traffic overview / **Downloads** / Sales overview / Session recordings. The Downloads tab adds total downloads, unique downloaders, downloads per day, a daily chart, top downloaded files and downloads by dataset.
+- **Overview** — seven live cards (visits, accounts, 30-day downloads, pending tutor reviews, learners online, papers, all-time downloads) plus recent account and guest downloads.
+- **App Users** — every Supabase Auth account with verification status and last sign-in; filter by verified/pending and export the filtered list to CSV.
+- **Tutors** — approve/reject teacher applications (with statement and attachment) and triage human tutor requests (`pending → contacted → closed`); search across both lists, export CSV, and see pending counts as a sidebar badge.
 - **Data** — add, publish/unpublish and delete fallback papers in Supabase.
-- **Logs** — recent downloads and raw page views.
+- **Logs** — recent signed-in and guest downloads plus raw page views, with search and CSV export.
 - **Settings** — add/remove administrators, inspect the deployment and adjust the admin-only RAGFlow connection override (the panel is no longer shown to visitors).
 - Marketing, Domains, Integrations, Security, Code, Agents, Workflows, Emails, API, MCP, Secrets render structured placeholders.
 

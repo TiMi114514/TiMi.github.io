@@ -20,9 +20,10 @@ import {
   pageLabel,
   percentChange,
   type AdminAnalytics,
+  type AdminDownloadAnalytics,
 } from '@/lib/analytics';
 
-type Tab = 'traffic' | 'sales' | 'sessions';
+type Tab = 'traffic' | 'downloads' | 'sales' | 'sessions';
 
 function normalize(value: unknown): AdminAnalytics | null {
   if (!value || typeof value !== 'object') return null;
@@ -59,6 +60,62 @@ function Delta({ current, previous }: { current: number; previous: number }) {
       )}
       {Math.abs(change)}%
     </span>
+  );
+}
+
+function normalizeDownload(value: unknown): AdminDownloadAnalytics | null {
+  if (!value || typeof value !== 'object') return null;
+  const raw = value as Partial<AdminDownloadAnalytics>;
+  return {
+    days: Number(raw.days ?? 30),
+    total_downloads: Number(raw.total_downloads ?? 0),
+    unique_downloaders: Number(raw.unique_downloaders ?? 0),
+    prev_total_downloads: Number(raw.prev_total_downloads ?? 0),
+    prev_unique_downloaders: Number(raw.prev_unique_downloaders ?? 0),
+    series: Array.isArray(raw.series) ? raw.series : [],
+    top_files: Array.isArray(raw.top_files) ? raw.top_files : [],
+    datasets: Array.isArray(raw.datasets) ? raw.datasets : [],
+  };
+}
+
+function DownloadMetrics({ data }: { data: AdminDownloadAnalytics | null }) {
+  const items = [
+    {
+      label: 'Total downloads',
+      value: data ? formatNumber(data.total_downloads) : '—',
+      delta: data ? (
+        <Delta current={data.total_downloads} previous={data.prev_total_downloads} />
+      ) : null,
+    },
+    {
+      label: 'Unique downloaders',
+      value: data ? formatNumber(data.unique_downloaders) : '—',
+      delta: data ? (
+        <Delta current={data.unique_downloaders} previous={data.prev_unique_downloaders} />
+      ) : null,
+    },
+    {
+      label: 'Downloads / day',
+      value: data ? (data.total_downloads / Math.max(1, data.days)).toFixed(1) : '—',
+      delta: null,
+    },
+  ];
+
+  return (
+    <div className="grid divide-y divide-[#e4e4e7] sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+      {items.map((item) => (
+        <div key={item.label} className="px-5 py-4">
+          <div className="flex items-center gap-1.5 text-[12.5px] text-[#71717a]">
+            {item.label}
+            <HelpCircle className="h-3.5 w-3.5 text-[#a1a1aa]" />
+          </div>
+          <div className="mt-2 flex flex-wrap items-end gap-2">
+            <span className="text-[20px] font-semibold leading-none">{item.value}</span>
+            {item.delta}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -108,6 +165,16 @@ export default function AdminAnalyticsPage() {
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [tab, setTab] = useState<Tab>('traffic');
+  const [downloads, setDownloads] = useState<AdminDownloadAnalytics | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const requested = params.get('tab');
+    if (requested === 'downloads' || requested === 'sales' || requested === 'sessions') {
+      setTab(requested);
+    }
+  }, []);
 
   useEffect(() => {
     if (!supabase) return;
@@ -139,6 +206,51 @@ export default function AdminAnalyticsPage() {
     };
   }, [days, refreshKey]);
 
+  useEffect(() => {
+    if (!supabase) return;
+    let active = true;
+    supabase
+      .rpc('admin_download_analytics', { p_days: days })
+      .then(({ data: result, error: rpcError }) => {
+        if (!active) return;
+        if (rpcError) {
+          setDownloadError(rpcError.message);
+          setDownloads(null);
+        } else {
+          setDownloadError(null);
+          setDownloads(normalizeDownload(result));
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [days, refreshKey]);
+
+  const downloadSeries = useMemo(
+    () =>
+      (downloads?.series ?? []).map((point) => ({
+        date: point.date,
+        visits: point.downloads,
+      })),
+    [downloads],
+  );
+  const downloadFileRows = useMemo(
+    () =>
+      (downloads?.top_files ?? []).map((row) => ({
+        label: row.name,
+        value: row.downloads,
+      })),
+    [downloads],
+  );
+  const downloadDatasetRows = useMemo(
+    () =>
+      (downloads?.datasets ?? []).map((row) => ({
+        label: row.dataset,
+        value: row.downloads,
+      })),
+    [downloads],
+  );
+
   const pageRows = useMemo(
     () => (data?.pages ?? []).map((row) => ({ label: pageLabel(row.path), value: row.visits })),
     [data],
@@ -166,6 +278,7 @@ export default function AdminAnalyticsPage() {
         {(
           [
             ['traffic', 'Traffic overview'],
+            ['downloads', 'Downloads'],
             ['sales', 'Sales overview'],
             ['sessions', 'Session recordings'],
           ] as [Tab, string][]
@@ -268,6 +381,37 @@ export default function AdminAnalyticsPage() {
               title="Country"
               rows={countryRows}
               emptyLabel="No country data yet. It is estimated from the visitor's time zone."
+            />
+          </div>
+        </>
+      ) : tab === 'downloads' ? (
+        <>
+          {downloadError ? (
+            <div className="mt-4 rounded-lg border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-[12.5px] text-[#b91c1c]">
+              {downloadError}
+            </div>
+          ) : null}
+          <section className="mt-4 rounded-xl border border-[#e4e4e7] bg-white">
+            <DownloadMetrics data={downloads} />
+            <div className="border-t border-[#e4e4e7] px-2 pb-2 pt-3">
+              {downloads === null && !downloadError ? (
+                <div className="h-[240px] animate-pulse rounded-lg bg-[#f4f4f5]" />
+              ) : (
+                <TrafficChart series={downloadSeries} label="Downloads over time" />
+              )}
+            </div>
+          </section>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <BarCard
+              title="Top downloaded files"
+              rows={downloadFileRows}
+              emptyLabel="No downloads in this range yet."
+            />
+            <BarCard
+              title="Downloads by dataset"
+              rows={downloadDatasetRows}
+              emptyLabel="Dataset data appears once downloads are recorded."
             />
           </div>
         </>

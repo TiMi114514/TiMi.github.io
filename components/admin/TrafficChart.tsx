@@ -3,7 +3,13 @@
 import { formatDayLabel } from '@/lib/analytics';
 import type { AnalyticsSeriesPoint } from '@/lib/analytics';
 
-export function TrafficChart({ series }: { series: AnalyticsSeriesPoint[] }) {
+export function TrafficChart({
+  series,
+  label = 'Visits over time',
+}: {
+  series: AnalyticsSeriesPoint[];
+  label?: string;
+}) {
   const width = 900;
   const height = 250;
   const padX = 8;
@@ -33,7 +39,7 @@ export function TrafficChart({ series }: { series: AnalyticsSeriesPoint[] }) {
       viewBox={`0 0 ${width} ${height}`}
       className="h-[240px] w-full"
       role="img"
-      aria-label="Visits over time"
+      aria-label={label}
     >
       <defs>
         <linearGradient id="traffic-fill" x1="0" y1="0" x2="0" y2="1">

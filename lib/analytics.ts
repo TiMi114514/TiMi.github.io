@@ -16,6 +16,17 @@ export type AdminAnalytics = {
   countries: AnalyticsCountry[];
 };
 
+export type AdminDownloadAnalytics = {
+  days: number;
+  total_downloads: number;
+  unique_downloaders: number;
+  prev_total_downloads: number;
+  prev_unique_downloaders: number;
+  series: { date: string; downloads: number }[];
+  top_files: { name: string; downloads: number }[];
+  datasets: { dataset: string; downloads: number }[];
+};
+
 const TIMEZONE_COUNTRIES: Record<string, string> = {
   'Asia/Hong_Kong': 'Hong Kong',
   'Asia/Shanghai': 'China',

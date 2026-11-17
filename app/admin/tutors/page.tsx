@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Check, GraduationCap, Mail, Paperclip, UserRound, X } from 'lucide-react';
+import { Check, Download, GraduationCap, Mail, Paperclip, Search, UserRound, X } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/lib/supabase';
 
@@ -44,6 +44,7 @@ export default function AdminTutorsPage() {
   const [requests, setRequests] = useState<HumanRequest[] | null>(null);
   const [tab, setTab] = useState<'teachers' | 'requests'>('teachers');
   const [message, setMessage] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
 
   async function load() {
     if (!supabase) return;
@@ -90,6 +91,70 @@ export default function AdminTutorsPage() {
 
   const pendingTeachers = (applications ?? []).filter((row) => row.status === 'pending').length;
   const pendingRequests = (requests ?? []).filter((row) => row.status === 'pending').length;
+
+  const filteredApplications = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return sortedApplications;
+    return sortedApplications.filter(
+      (row) =>
+        row.email.toLowerCase().includes(needle) ||
+        (row.display_name ?? '').toLowerCase().includes(needle) ||
+        (row.subjects ?? '').toLowerCase().includes(needle) ||
+        (row.personal_statement ?? row.message ?? '').toLowerCase().includes(needle),
+    );
+  }, [sortedApplications, query]);
+
+  const filteredRequests = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return sortedRequests;
+    return sortedRequests.filter(
+      (row) =>
+        row.email.toLowerCase().includes(needle) ||
+        row.subject.toLowerCase().includes(needle) ||
+        row.question.toLowerCase().includes(needle),
+    );
+  }, [sortedRequests, query]);
+
+  function exportCsv() {
+    const isTeachers = tab === 'teachers';
+    const header = isTeachers
+      ? ['Email', 'Name', 'Subjects', 'Personal statement', 'Document', 'Status', 'Applied']
+      : ['Email', 'Subject', 'Question', 'Preferred time', 'Status', 'Created'];
+    const lines = isTeachers
+      ? filteredApplications.map((row) => [
+          row.email,
+          row.display_name ?? '',
+          row.subjects ?? '',
+          row.personal_statement ?? row.message ?? '',
+          row.document_name ?? '',
+          row.status,
+          row.created_at,
+        ])
+      : filteredRequests.map((row) => [
+          row.email,
+          row.subject,
+          row.question,
+          row.preferred_at ?? '',
+          row.status,
+          row.created_at,
+        ]);
+    const csv = [header, ...lines]
+      .map((line) =>
+        line.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(','),
+      )
+      .join('\r\n');
+    const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `${isTeachers ? 'teacher-applications' : 'tutor-requests'}-${new Date()
+      .toISOString()
+      .slice(0, 10)}.csv`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  }
 
   async function reviewTeacher(row: TeacherApplication, status: 'approved' | 'rejected') {
     if (!supabase) return;
@@ -172,6 +237,33 @@ export default function AdminTutorsPage() {
         </button>
       </div>
 
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[220px] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#a1a1aa]" />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search email, name, subject or text"
+            className="w-full rounded-lg border border-[#e4e4e7] bg-white py-2 pl-9 pr-3 text-[12.5px] outline-none placeholder:text-[#a1a1aa] focus:border-[#a1a1aa]"
+          />
+        </div>
+        <span className="text-[11.5px] text-[#71717a]">
+          {tab === 'teachers'
+            ? `${filteredApplications.length} of ${sortedApplications.length}`
+            : `${filteredRequests.length} of ${sortedRequests.length}`}
+        </span>
+        <button
+          type="button"
+          onClick={exportCsv}
+          disabled={
+            (tab === 'teachers' ? filteredApplications : filteredRequests).length === 0
+          }
+          className="inline-flex items-center gap-1.5 rounded-lg border border-[#e4e4e7] bg-white px-3 py-2 text-[12px] text-[#3f3f46] transition-colors hover:bg-[#fafafa] disabled:opacity-50"
+        >
+          <Download className="h-3.5 w-3.5" /> Export CSV
+        </button>
+      </div>
+
       {message ? (
         <p className="mt-3 rounded-lg border border-[#e4e4e7] bg-white px-4 py-2 text-[12px] text-[#52525b]">
           {message}
@@ -182,12 +274,12 @@ export default function AdminTutorsPage() {
         <div className="mt-4 space-y-3">
           {applications === null ? (
             <div className="h-28 animate-pulse rounded-xl bg-[#e4e4e7]/60" />
-          ) : sortedApplications.length === 0 ? (
+          ) : filteredApplications.length === 0 ? (
             <div className="rounded-xl border border-[#e4e4e7] bg-white px-5 py-12 text-center text-[12.5px] text-[#a1a1aa]">
-              No teacher applications yet. Students can apply from the sign-up form.
+              No teacher applications match.
             </div>
           ) : (
-            sortedApplications.map((row) => (
+            filteredApplications.map((row) => (
               <article key={row.id} className="rounded-xl border border-[#e4e4e7] bg-white p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="flex items-start gap-3">
@@ -267,12 +359,12 @@ export default function AdminTutorsPage() {
         <div className="mt-4 space-y-3">
           {requests === null ? (
             <div className="h-28 animate-pulse rounded-xl bg-[#e4e4e7]/60" />
-          ) : sortedRequests.length === 0 ? (
+          ) : filteredRequests.length === 0 ? (
             <div className="rounded-xl border border-[#e4e4e7] bg-white px-5 py-12 text-center text-[12.5px] text-[#a1a1aa]">
-              No human tutor requests yet. Students can submit one from the human tutor page.
+              No human tutor requests match.
             </div>
           ) : (
-            sortedRequests.map((row) => (
+            filteredRequests.map((row) => (
               <article key={row.id} className="rounded-xl border border-[#e4e4e7] bg-white p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="flex items-start gap-3">
