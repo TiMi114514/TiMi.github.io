@@ -35,9 +35,6 @@ export function Footer() {
             <Link href="/tutor/human" className="block transition-colors hover:text-ink">
               Human tutor
             </Link>
-            <Link href="/#how-it-works" className="block transition-colors hover:text-ink">
-              How it works
-            </Link>
           </div>
           <div className="space-y-2.5">
             <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Account</p>

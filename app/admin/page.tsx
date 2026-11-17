@@ -130,7 +130,9 @@ export default function AdminAnalyticsPage() {
     }
 
     void load();
-    const timer = window.setInterval(() => void load(true), 60_000);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void load(true);
+    }, 5 * 60_000);
     return () => {
       active = false;
       window.clearInterval(timer);

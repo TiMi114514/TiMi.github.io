@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
+import { ConnectionSettings } from '@/components/ConnectionSettings';
 import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/lib/supabase';
 
@@ -168,6 +169,17 @@ export default function AdminSettingsPage() {
           </p>
         </section>
       </div>
+
+      <section className="mt-4">
+        <h2 className="text-[14px] font-semibold">RAGFlow connection</h2>
+        <p className="mt-1 max-w-2xl text-[11.5px] leading-relaxed text-[#71717a]">
+          Admin-only override for this browser. Visitors always use the values compiled into the
+          build, so the connection panel is no longer shown on the tutor page.
+        </p>
+        <div className="mt-3">
+          <ConnectionSettings />
+        </div>
+      </section>
     </div>
   );
 }

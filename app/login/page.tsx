@@ -10,15 +10,15 @@ import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!loading && user) router.replace('/account');
-  }, [loading, user, router]);
+    if (!loading && user) router.replace(isAdmin ? '/admin' : '/account');
+  }, [loading, user, isAdmin, router]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -41,7 +41,9 @@ export default function LoginPage() {
       setBusy(false);
       return;
     }
-    router.replace('/account');
+
+    const { data: adminFlag } = await supabase.rpc('is_admin');
+    router.replace(adminFlag === true ? '/admin' : '/account');
   }
 
   return (
@@ -80,6 +82,15 @@ export default function LoginPage() {
                 placeholder="Your password"
               />
             </label>
+
+            <div className="flex justify-end">
+              <Link
+                href="/forgot-password"
+                className="text-[12px] text-muted underline decoration-line underline-offset-4 transition-colors hover:text-ink hover:decoration-ink"
+              >
+                Forgot password?
+              </Link>
+            </div>
 
             {error ? (
               <p className="rounded-xl border border-[#e7c9c1] bg-[#fbeeea] px-3 py-2 text-[12.5px] leading-relaxed text-[#8a3b2a]">

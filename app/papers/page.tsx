@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Search, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { Search, ShieldCheck } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { PaperCard } from '@/components/PaperCard';
@@ -12,8 +12,22 @@ import { downloadRagflowDocument, getRagflowConfig } from '@/lib/ragflow';
 import { supabase } from '@/lib/supabase';
 import type { ArchiveResult, Paper } from '@/lib/types';
 
+const GUEST_DOWNLOAD_KEY = 'differential-quant.guest.lastDownload';
+
+function guestCanDownload(): boolean {
+  try {
+    const now = Date.now();
+    const last = Number(window.sessionStorage.getItem(GUEST_DOWNLOAD_KEY) || 0);
+    if (now - last < 1000) return false;
+    window.sessionStorage.setItem(GUEST_DOWNLOAD_KEY, String(now));
+    return true;
+  } catch {
+    return true;
+  }
+}
+
 export default function PapersPage() {
-  const { user, loading, verified } = useAuth();
+  const { user, loading } = useAuth();
   const [archive, setArchive] = useState<ArchiveResult | null>(null);
   const [subject, setSubject] = useState('All');
   const [year, setYear] = useState('All');
@@ -65,12 +79,8 @@ export default function PapersPage() {
 
   async function download(paper: Paper) {
     setNotice(null);
-    if (!user) {
-      setNotice('Sign in to download papers from the archive.');
-      return;
-    }
-    if (!verified) {
-      setNotice('Verify your email first — check your inbox for the confirmation link.');
+    if (!user && !guestCanDownload()) {
+      setNotice('Guests can download one paper per second. Please wait a moment and try again.');
       return;
     }
 
@@ -96,7 +106,7 @@ export default function PapersPage() {
         return;
       }
 
-      if (supabase) {
+      if (supabase && user) {
         try {
           await supabase.from('downloads').insert({
             user_id: user.id,
@@ -125,8 +135,8 @@ export default function PapersPage() {
               Past papers
             </h1>
             <p className="mt-4 max-w-[520px] text-[14px] leading-relaxed text-muted">
-              Every paper in your knowledge base, organised by subject and year. Sign in with a
-              verified email to download.
+              Every paper in your knowledge base, organised by subject and year. Free to download;
+              guests are limited to one paper per second.
             </p>
           </div>
           {archive ? (
@@ -143,8 +153,9 @@ export default function PapersPage() {
         {!loading && !user ? (
           <div className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-paper px-4 py-3 text-[13px]">
             <span className="flex items-center gap-2 text-muted">
-              <ShieldAlert className="h-4 w-4" aria-hidden />
-              Browsing is free. Sign in to download papers and ask the tutor.
+              <ShieldCheck className="h-4 w-4 text-[#3f7d5a]" aria-hidden />
+              Free to browse and download — no account needed. Guests can download one paper per
+              second.
             </span>
             <div className="flex items-center gap-2">
               <Link href="/login" className="btn-outline px-3 py-1.5">
@@ -154,18 +165,6 @@ export default function PapersPage() {
                 Create account
               </Link>
             </div>
-          </div>
-        ) : null}
-
-        {user && !verified ? (
-          <div className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e7d3b0] bg-[#fbf3e2] px-4 py-3 text-[13px] text-[#6d5320]">
-            <span className="flex items-center gap-2">
-              <ShieldAlert className="h-4 w-4" aria-hidden />
-              Verify your email to unlock downloads.
-            </span>
-            <Link href="/account" className="link-underline text-[#6d5320]">
-              Resend verification
-            </Link>
           </div>
         ) : null}
 

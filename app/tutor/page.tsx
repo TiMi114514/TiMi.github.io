@@ -1,21 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   BookOpen,
   LockKeyhole,
   MessageSquareText,
   ShieldCheck,
-  Sparkles,
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { ChatPanel } from '@/components/ChatPanel';
-import { ConnectionSettings } from '@/components/ConnectionSettings';
 import { TutorTabs } from '@/components/TutorTabs';
 import { useAuth } from '@/components/AuthProvider';
-import { getRagflowConfig } from '@/lib/ragflow';
 
 const features = [
   {
@@ -37,13 +33,6 @@ const features = [
 
 export default function TutorPage() {
   const { user, loading, verified, configured } = useAuth();
-  const [version, setVersion] = useState(0);
-  const [ragReady, setRagReady] = useState(false);
-
-  useEffect(() => {
-    const rag = getRagflowConfig();
-    setRagReady(Boolean(rag.baseUrl && rag.apiKey && rag.chatId));
-  }, [version]);
 
   return (
     <div>
@@ -79,18 +68,6 @@ export default function TutorPage() {
                 </li>
               ))}
             </ul>
-
-            <div className="mt-8">
-              <ConnectionSettings onSaved={() => setVersion((value) => value + 1)} />
-            </div>
-
-            {!ragReady ? (
-              <p className="mt-3 flex items-start gap-2 rounded-xl border border-[#e7d3b0] bg-[#fbf3e2] px-3.5 py-3 text-[12px] leading-relaxed text-[#6d5320]">
-                <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-                RAGFlow isn&apos;t fully configured yet. Add the chat assistant id in connection
-                settings to start a session.
-              </p>
-            ) : null}
           </aside>
 
           <section>
@@ -151,7 +128,7 @@ export default function TutorPage() {
                 </div>
               </div>
             ) : (
-              <ChatPanel key={version} />
+              <ChatPanel />
             )}
 
             <p className="mt-3 text-[11.5px] leading-relaxed text-muted">

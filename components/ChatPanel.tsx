@@ -147,7 +147,7 @@ export function ChatPanel() {
             <span
               className={`h-1.5 w-1.5 rounded-full ${connected ? 'bg-[#3f7d5a]' : 'bg-[#b4543f]'}`}
             />
-            {connected ? 'knowledge base connected' : 'chat id not configured'}
+            {connected ? 'knowledge base connected' : 'tutor unavailable'}
           </span>
           <button
             type="button"

@@ -365,9 +365,7 @@ export async function ragflowChat(
   options: ChatOptions = {},
 ): Promise<ChatResult> {
   if (!cfg.chatId) {
-    throw new Error(
-      'No RAGFlow chat assistant configured. Open Connection settings on the tutor page and add your chat id.',
-    );
+    throw new Error('The tutor is unavailable right now. Please try again later.');
   }
 
   const question = [...messages].reverse().find((message) => message.role === 'user')?.content?.trim();

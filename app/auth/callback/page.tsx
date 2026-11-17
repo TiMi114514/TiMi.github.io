@@ -23,7 +23,8 @@ export default function AuthCallbackPage() {
       for (let attempt = 0; attempt < 12; attempt += 1) {
         const { data } = await supabase!.auth.getSession();
         if (data.session) {
-          if (!cancelled) router.replace('/account');
+          const { data: adminFlag } = await supabase!.rpc('is_admin');
+          if (!cancelled) router.replace(adminFlag === true ? '/admin' : '/account');
           return;
         }
         await new Promise((resolve) => setTimeout(resolve, 300));

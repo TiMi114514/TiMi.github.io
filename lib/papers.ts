@@ -80,6 +80,9 @@ function mapRow(row: Record<string, unknown>): Paper {
   };
 }
 
+const ARCHIVE_CACHE_KEY = 'differential-quant.archive.cache.v1';
+const ARCHIVE_CACHE_TTL = 5 * 60 * 1000;
+
 /**
  * Load the archive. Priority:
  *   1. RAGFlow dataset (if configured)  — the source of truth once your papers are ingested
@@ -87,6 +90,37 @@ function mapRow(row: Record<string, unknown>): Paper {
  *   3. Built-in sample data              — so the site always renders
  */
 export async function fetchArchive(): Promise<ArchiveResult> {
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = window.sessionStorage.getItem(ARCHIVE_CACHE_KEY);
+      if (raw) {
+        const cached = JSON.parse(raw) as { ts: number; result: ArchiveResult };
+        if (Date.now() - cached.ts < ARCHIVE_CACHE_TTL && Array.isArray(cached.result?.papers)) {
+          return cached.result;
+        }
+      }
+    } catch {
+      /* ignore malformed cache */
+    }
+  }
+
+  const result = await loadArchive();
+
+  if (typeof window !== 'undefined') {
+    try {
+      window.sessionStorage.setItem(
+        ARCHIVE_CACHE_KEY,
+        JSON.stringify({ ts: Date.now(), result }),
+      );
+    } catch {
+      /* storage may be unavailable */
+    }
+  }
+
+  return result;
+}
+
+async function loadArchive(): Promise<ArchiveResult> {
   const cfg = getRagflowConfig();
 
   if (cfg.datasetId && cfg.apiKey) {

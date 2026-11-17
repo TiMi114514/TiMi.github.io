@@ -9,7 +9,6 @@ const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
 const nav = [
   { href: '/papers', label: 'Past papers' },
   { href: '/tutor', label: 'Tutors' },
-  { href: '/#how-it-works', label: 'How it works' },
 ];
 
 export function Header() {
@@ -50,8 +49,7 @@ export function Header() {
 
         <nav className="hidden items-center gap-8 text-[13px] text-muted md:flex">
           {nav.map((item) => {
-            const active =
-              item.href !== '/#how-it-works' && pathname.startsWith(item.href.replace(/\/$/, ''));
+            const active = pathname.startsWith(item.href.replace(/\/$/, ''));
             return (
               <Link
                 key={item.href}
@@ -100,8 +98,7 @@ export function Header() {
       <nav className="border-t border-line/50 md:hidden">
         <div className="container-page flex items-center gap-6 overflow-x-auto py-2.5 text-[12.5px] text-muted">
           {nav.map((item) => {
-            const active =
-              item.href !== '/#how-it-works' && pathname.startsWith(item.href.replace(/\/$/, ''));
+            const active = pathname.startsWith(item.href.replace(/\/$/, ''));
             return (
               <Link
                 key={item.href}

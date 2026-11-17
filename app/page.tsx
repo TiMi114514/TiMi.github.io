@@ -1,11 +1,8 @@
-import type { CSSProperties } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
   ArrowUpRight,
   BookOpen,
-  CheckCircle2,
-  Download,
   MessageSquareText,
   ShieldCheck,
   Sparkles,
@@ -13,60 +10,9 @@ import {
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import { HeroPapers } from '@/components/HeroPapers';
 import { PaperCard } from '@/components/PaperCard';
 import { samplePapers } from '@/lib/papers';
-
-function HeroPapers() {
-  return (
-    <div className="relative hidden h-[420px] lg:block" aria-hidden>
-      <div
-        className="float-card float-card-delay-1 absolute left-0 top-28 w-[238px] rounded-xl border border-line bg-white/70 p-5 shadow-card"
-        style={{ '--rot': '-9deg' } as CSSProperties}
-      >
-        <p className="text-[10px] uppercase tracking-[0.16em] text-muted">Mathematics</p>
-        <div className="mt-6 space-y-2">
-          <div className="h-1.5 w-4/5 rounded-full bg-line/80" />
-          <div className="h-1.5 w-3/5 rounded-full bg-line/80" />
-          <div className="h-1.5 w-2/3 rounded-full bg-line/80" />
-        </div>
-        <p className="mt-10 text-[11px] text-muted">Paper 1 · 2024</p>
-      </div>
-
-      <div
-        className="float-card float-card-delay-2 absolute left-[112px] top-4 w-[248px] rounded-xl border border-line bg-white/85 p-5 shadow-card"
-        style={{ '--rot': '-3deg' } as CSSProperties}
-      >
-        <p className="text-[10px] uppercase tracking-[0.16em] text-muted">Chemistry</p>
-        <div className="mt-6 space-y-2">
-          <div className="h-1.5 w-3/4 rounded-full bg-line/80" />
-          <div className="h-1.5 w-1/2 rounded-full bg-line/80" />
-          <div className="h-1.5 w-2/3 rounded-full bg-line/80" />
-          <div className="h-1.5 w-2/5 rounded-full bg-line/80" />
-        </div>
-        <p className="mt-10 text-[11px] text-muted">Paper 3 · 2025</p>
-      </div>
-
-      <div
-        className="float-card absolute right-0 top-20 w-[272px] rounded-xl border border-line bg-white p-5 shadow-float"
-        style={{ '--rot': '7deg' } as CSSProperties}
-      >
-        <p className="text-[10px] uppercase tracking-[0.16em] text-muted">Physics</p>
-        <div className="mt-6 space-y-2">
-          <div className="h-1.5 w-5/6 rounded-full bg-line/90" />
-          <div className="h-1.5 w-3/5 rounded-full bg-line/90" />
-          <div className="h-1.5 w-4/5 rounded-full bg-line/90" />
-          <div className="h-1.5 w-1/2 rounded-full bg-line/90" />
-        </div>
-        <p className="mt-10 text-[11px] text-muted">Paper 2 · 2024</p>
-      </div>
-
-      <div className="float-soft absolute bottom-6 right-2 flex items-center gap-2 rounded-full border border-line bg-paper px-4 py-2 shadow-card">
-        <CheckCircle2 className="h-4 w-4 text-[#3f7d5a]" />
-        <span className="text-[12px] text-muted">Answered from your notes</span>
-      </div>
-    </div>
-  );
-}
 
 function TutorMock() {
   return (
@@ -122,24 +68,6 @@ const tutorFeatures = [
     icon: ShieldCheck,
     title: 'Sources you can check',
     body: 'Each reply lists the chapters and past papers it used, so you can verify it.',
-  },
-];
-
-const steps = [
-  {
-    number: '01',
-    title: 'Browse the archive',
-    body: 'Past papers, mark schemes and question packs — organised by subject and year.',
-  },
-  {
-    number: '02',
-    title: 'Verify your email',
-    body: 'A one-time check keeps the archive and the tutor available to real students.',
-  },
-  {
-    number: '03',
-    title: 'Ask the tutor',
-    body: 'Ask the AI tutor any question, or book a human tutor when you want a person — answers come with sources.',
   },
 ];
 
@@ -275,45 +203,6 @@ export default function HomePage() {
             </div>
 
             <TutorMock />
-          </div>
-        </section>
-
-        {/* How it works */}
-        <section id="how-it-works" className="border-t border-line/60">
-          <div className="container-page py-16 sm:py-20">
-            <p className="eyebrow">How it works</p>
-            <h2 className="mt-3 font-display text-[34px] leading-none tracking-[-0.01em] sm:text-[40px]">
-              Three steps, no clutter.
-            </h2>
-
-            <div className="mt-10 grid gap-8 sm:grid-cols-3">
-              {steps.map((step) => (
-                <div key={step.number} className="border-t border-ink/80 pt-4">
-                  <p className="font-display text-[13px] text-muted">{step.number}</p>
-                  <h3 className="mt-2 font-display text-[24px] leading-tight">{step.title}</h3>
-                  <p className="mt-2 max-w-[280px] text-[13px] leading-relaxed text-muted">
-                    {step.body}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-14 flex flex-col items-start justify-between gap-5 rounded-2xl border border-line bg-paper px-6 py-7 sm:flex-row sm:items-center">
-              <div>
-                <h3 className="font-display text-[26px] leading-tight">Ready when you are.</h3>
-                <p className="mt-1 text-[13px] text-muted">
-                  Create an account, verify your email, and start with the archive.
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <Link href="/signup" className="btn-dark px-5 py-2.5">
-                  Create account
-                </Link>
-                <Link href="/papers" className="btn-light px-5 py-2.5">
-                  <Download className="h-4 w-4" aria-hidden /> Browse papers
-                </Link>
-              </div>
-            </div>
           </div>
         </section>
       </main>

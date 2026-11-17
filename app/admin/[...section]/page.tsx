@@ -54,7 +54,7 @@ const sections: Record<
     description:
       'The AI tutor is a RAGFlow chat assistant. Human tutor requests are reviewed under Tutors.',
     icon: Bot,
-    note: 'Use the Connection settings on the tutor page to switch assistants.',
+    note: 'Adjust the connection from Admin → Settings.',
   },
   workflows: {
     title: 'Workflows',

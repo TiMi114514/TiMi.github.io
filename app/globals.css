@@ -126,52 +126,34 @@ body {
 }
 
 /* ------------------------------------------------------------------ */
-/* Motion                                                              */
+/* Motion — pointer-driven and transform-only                          */
 /* ------------------------------------------------------------------ */
 
-@keyframes float-card {
-  0%,
-  100% {
-    transform: rotate(var(--rot, 0deg)) translateY(0);
-  }
-  50% {
-    transform: rotate(var(--rot, 0deg)) translateY(-9px);
-  }
+.hero-stage {
+  --mx: 0;
+  --my: 0;
+  perspective: 900px;
 }
 
-@keyframes float-soft {
-  0%,
-  100% {
-    transform: translateY(0);
+.hero-card {
+  transform: translate3d(
+      calc(var(--mx) * var(--depth, 12) * 1px),
+      calc(var(--my) * var(--depth, 12) * 1px),
+      0
+    )
+    rotate(var(--rot, 0deg));
+  transition: transform 120ms ease-out;
+  will-change: transform;
+}
+
+.hero-card:hover {
+  transition-duration: 60ms;
+}
+
+@media (hover: none) {
+  .hero-card {
+    transform: rotate(var(--rot, 0deg));
   }
-  50% {
-    transform: translateY(-4px);
-  }
-}
-
-@keyframes sheen {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
-}
-
-.float-card {
-  animation: float-card 8s ease-in-out infinite;
-}
-
-.float-card-delay-1 {
-  animation-delay: -2.6s;
-}
-
-.float-card-delay-2 {
-  animation-delay: -5.2s;
-}
-
-.float-soft {
-  animation: float-soft 5.5s ease-in-out infinite;
 }
 
 .btn-dark,
@@ -225,5 +207,9 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .hero-card {
+    transform: rotate(var(--rot, 0deg)) !important;
   }
 }
