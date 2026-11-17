@@ -89,7 +89,7 @@ export function HeroPapers() {
         style={{ '--rot': '0deg', '--depth': '10' } as CSSProperties}
       >
         <CheckCircle2 className="h-4 w-4 text-[#3f7d5a]" />
-        <span className="text-[12px] text-muted">Answered from your notes</span>
+        <span className="text-[12px] text-muted">updated at 2026/11/17</span>
       </div>
     </div>
   );
