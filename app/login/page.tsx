@@ -52,7 +52,7 @@ export default function LoginPage() {
           <p className="eyebrow">Welcome back</p>
           <h1 className="mt-3 font-display text-[42px] leading-none tracking-[-0.01em]">Sign in</h1>
           <p className="mt-3 text-[13.5px] leading-relaxed text-muted">
-            Access the archive and the AI tutor, grounded in your course material.
+            Access the archive, the AI tutor and human tutors, grounded in your course material.
           </p>
 
           <form onSubmit={submit} className="mt-8 space-y-4">

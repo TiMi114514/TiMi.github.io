@@ -28,7 +28,7 @@ export function BarCard({
             <div key={row.label} className="flex items-center gap-2">
               <div className="relative h-8 min-w-0 flex-1 overflow-hidden rounded-md bg-[#f4f4f5]">
                 <div
-                  className="absolute inset-y-0 left-0 rounded-md bg-[#ffb48a]"
+                  className="absolute inset-y-0 left-0 rounded-md bg-[#ffb48a] transition-[width] duration-700 ease-out"
                   style={{ width: `${Math.max(16, (row.value / max) * 100)}%` }}
                 />
                 <span className="absolute inset-y-0 left-3 flex max-w-[calc(100%-12px)] items-center truncate text-[12.5px] text-[#3f3f46]">

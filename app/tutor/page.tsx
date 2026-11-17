@@ -13,6 +13,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { ChatPanel } from '@/components/ChatPanel';
 import { ConnectionSettings } from '@/components/ConnectionSettings';
+import { TutorTabs } from '@/components/TutorTabs';
 import { useAuth } from '@/components/AuthProvider';
 import { getRagflowConfig } from '@/lib/ragflow';
 
@@ -48,14 +49,18 @@ export default function TutorPage() {
     <div>
       <Header />
       <main className="container-page py-12 sm:py-16">
+        <div className="mb-7 flex flex-wrap items-center justify-between gap-3">
+          <TutorTabs active="ai" />
+          <p className="text-[12px] text-muted">Instant answers from your course material</p>
+        </div>
         <div className="grid gap-10 lg:grid-cols-[0.78fr_1.22fr] lg:items-start">
           <aside>
             <p className="eyebrow">AI tutor</p>
-            <h1 className="mt-4 max-w-[360px] font-display text-[44px] leading-[1.0] tracking-[-0.01em] sm:text-[50px]">
+            <h1 className="mt-4 max-w-[370px] font-display text-[40px] leading-[0.98] tracking-[-0.01em] sm:text-[46px]">
               Stuck at 11pm? Ask it like you&apos;d ask a tutor.
             </h1>
             <p className="mt-5 max-w-[380px] text-[14px] leading-relaxed text-muted">
-              The tutor runs on your RAGFlow knowledge base, so the explanations match how the
+              The AI tutor runs on your RAGFlow knowledge base, so the explanations match how the
               course actually teaches it.
             </p>
 

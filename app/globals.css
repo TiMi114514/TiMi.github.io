@@ -124,3 +124,106 @@ body {
   background: #d6cebf;
   border-radius: 999px;
 }
+
+/* ------------------------------------------------------------------ */
+/* Motion                                                              */
+/* ------------------------------------------------------------------ */
+
+@keyframes float-card {
+  0%,
+  100% {
+    transform: rotate(var(--rot, 0deg)) translateY(0);
+  }
+  50% {
+    transform: rotate(var(--rot, 0deg)) translateY(-9px);
+  }
+}
+
+@keyframes float-soft {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes sheen {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.float-card {
+  animation: float-card 8s ease-in-out infinite;
+}
+
+.float-card-delay-1 {
+  animation-delay: -2.6s;
+}
+
+.float-card-delay-2 {
+  animation-delay: -5.2s;
+}
+
+.float-soft {
+  animation: float-soft 5.5s ease-in-out infinite;
+}
+
+.btn-dark,
+.btn-light,
+.btn-outline,
+.btn {
+  transition:
+    transform 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+.btn-dark:hover,
+.btn-light:hover,
+.btn-outline:hover,
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn-dark:active,
+.btn-light:active,
+.btn-outline:active,
+.btn:active {
+  transform: translateY(0) scale(0.99);
+}
+
+.btn-dark svg,
+.btn-light svg,
+.btn-outline svg,
+.btn svg {
+  transition: transform 200ms ease;
+}
+
+.btn-dark:hover svg,
+.btn-light:hover svg,
+.btn-outline:hover svg,
+.btn:hover svg {
+  transform: translateX(2px);
+}
+
+.btn-light:hover .lucide-sparkles {
+  transform: rotate(16deg) scale(1.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

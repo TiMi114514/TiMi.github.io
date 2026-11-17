@@ -321,3 +321,75 @@ $$;
 
 revoke all on function public.admin_list_users() from public;
 grant execute on function public.admin_list_users() to authenticated;
+
+-- ============================================================
+-- Tutor marketplace: teacher applications and human tutor requests
+-- ============================================================
+
+create table if not exists public.teacher_applications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users (id) on delete set null,
+  email text not null,
+  display_name text,
+  subjects text,
+  message text,
+  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  created_at timestamptz not null default now(),
+  reviewed_at timestamptz,
+  reviewed_by uuid
+);
+
+create index if not exists teacher_applications_status_idx on public.teacher_applications (status, created_at desc);
+create index if not exists teacher_applications_user_idx on public.teacher_applications (user_id);
+
+alter table public.teacher_applications enable row level security;
+
+drop policy if exists "teacher_applications_insert_public" on public.teacher_applications;
+create policy "teacher_applications_insert_public"
+  on public.teacher_applications for insert
+  to anon, authenticated
+  with check (status = 'pending');
+
+drop policy if exists "teacher_applications_select_own" on public.teacher_applications;
+create policy "teacher_applications_select_own"
+  on public.teacher_applications for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "teacher_applications_admin_all" on public.teacher_applications;
+create policy "teacher_applications_admin_all"
+  on public.teacher_applications for all
+  using (public.is_admin())
+  with check (public.is_admin());
+
+create table if not exists public.human_tutor_requests (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  email text not null,
+  subject text not null,
+  question text not null,
+  preferred_at timestamptz,
+  status text not null default 'pending' check (status in ('pending', 'contacted', 'closed')),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists human_tutor_requests_status_idx on public.human_tutor_requests (status, created_at desc);
+create index if not exists human_tutor_requests_user_idx on public.human_tutor_requests (user_id);
+
+alter table public.human_tutor_requests enable row level security;
+
+drop policy if exists "human_tutor_requests_insert_own" on public.human_tutor_requests;
+create policy "human_tutor_requests_insert_own"
+  on public.human_tutor_requests for insert
+  to authenticated
+  with check (auth.uid() = user_id and status = 'pending');
+
+drop policy if exists "human_tutor_requests_select_own" on public.human_tutor_requests;
+create policy "human_tutor_requests_select_own"
+  on public.human_tutor_requests for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "human_tutor_requests_admin_all" on public.human_tutor_requests;
+create policy "human_tutor_requests_admin_all"
+  on public.human_tutor_requests for all
+  using (public.is_admin())
+  with check (public.is_admin());

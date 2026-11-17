@@ -1,15 +1,16 @@
-# Paperwise
+# Differential Quant
 
-Past papers + an AI tutor grounded in your own knowledge base.
+Past papers, an AI tutor grounded in your own knowledge base, and human tutors on demand.
 
 - **Frontend**: Next.js 15 (App Router) → static export, hosted on GitHub Pages
 - **Accounts**: Supabase Auth (email + password, email verification) & PostgreSQL
-- **AI tutor**: RAGFlow, via its OpenAI-compatible chat endpoint
+- **AI tutor**: RAGFlow, via its native or OpenAI-compatible chat endpoint
+- **Human tutors**: requests are stored in Supabase and reviewed in the admin dashboard
 - **Archive**: RAGFlow dataset documents (fallback: Supabase `papers` table, then sample data)
 
-The design follows the supplied reference: warm cream canvas, serif display type, paper-stack hero, archive cards, and a tutor session panel with citations.
+The brand mark is the supplied **dx** image (cropped and exported to `public/brand-mark.png`, favicon and Apple touch icon). The interface keeps the warm cream canvas and editorial serif type, now using Source Serif 4 for flatter, wider display letterforms.
 
-| Landing | Archive | Tutor |
+| Landing | Archive | AI tutor |
 | --- | --- | --- |
 | ![Landing](docs/screenshots/home.png) | ![Archive](docs/screenshots/archive.png) | ![Tutor](docs/screenshots/tutor.png) |
 
@@ -17,7 +18,7 @@ The design follows the supplied reference: warm cream canvas, serif display type
 
 Already configured in the Supabase project `wksdpsmxwybsmtjjipxa`:
 
-- `profiles`, `papers`, `downloads` tables with RLS and six starter papers
+- `profiles`, `papers`, `downloads`, `page_views`, `admins`, `teacher_applications`, `human_tutor_requests` tables with RLS and six starter papers
 - Email/password auth with confirmation required
 - Site URL `https://timi114514.github.io/TiMi.github.io/` and redirect allow-list for `/auth/callback` (plus `http://localhost:3000/**`)
 
@@ -25,6 +26,23 @@ Still environment-dependent:
 
 - RAGFlow runs on the owner's machine (`http://localhost:9380`). The public site therefore reads the archive from Supabase and the tutor reports a connection error until RAGFlow gets a public URL (tunnel or server). On the owner's machine the tutor and the full 700-document archive work.
 - Supabase's built-in email sender has low limits. Add custom SMTP (Authentication → Emails) for reliable verification in production.
+
+## Tutors: AI and human
+
+Both live under **/tutor**, with a two-pill switcher:
+
+- **/tutor** — AI tutor. Streams RAGFlow answers with citation chips; conversation context is kept through a RAGFlow session id.
+- **/tutor/human** — human tutor. Signed-in, verified students submit the subject, question, preferred time and contact email. Requests land in `human_tutor_requests` with `pending` status and the student sees their own request history.
+
+![Human tutor](docs/screenshots/human-tutor.png)
+
+### Teacher applications
+
+The sign-up form has an optional **Apply to become a teacher** checkbox. It reveals subjects and an introduction; on successful sign-up the application is written to `teacher_applications` as `pending`. Admins review it under **Admin → Tutors** and can approve or reject. The student's account page shows the review status.
+
+- Public insert policy: only `pending` rows, so nobody can self-approve.
+- Students can read only their own application (RLS), admins can read and update everything.
+- Approved teachers are the pool used for human tutor sessions.
 
 ## Admin dashboard
 
@@ -34,17 +52,20 @@ Sign in with **JackyChen2027@outlook.com** and open **/admin** (an **Admin** lin
 
 ![Admin analytics](docs/screenshots/admin.png)
 
-The shell mirrors the reference: search, Overview, App Users, Data, Analytics, Marketing, Domains, Integrations, Security, Code, Agents, Workflows, Emails, Logs, API, Settings, MCP and Secrets.
+The shell mirrors the reference: search, Overview, App Users, Tutors, Data, Analytics, Marketing, Domains, Integrations, Security, Code, Agents, Workflows, Emails, Logs, API, Settings, MCP and Secrets.
 
 Working sections:
 
 - **Analytics** — total visits, unique visitors, average visit duration, live visitors, daily traffic chart, page traffic and country breakdown, 7/14/30/90-day ranges, tabs for Traffic overview / Sales overview / Session recordings.
 - **Overview** — traffic, account, archive and download summary.
 - **App Users** — every Supabase Auth account with verification status and last sign-in.
+- **Tutors** — approve/reject teacher applications and triage human tutor requests (`pending → contacted → closed`).
 - **Data** — add, publish/unpublish and delete fallback papers in Supabase.
 - **Logs** — recent downloads and raw page views.
 - **Settings** — add/remove administrators and inspect the deployment configuration.
 - Marketing, Domains, Integrations, Security, Code, Agents, Workflows, Emails, API, MCP, Secrets render structured placeholders.
+
+![Admin tutors](docs/screenshots/admin-tutors.png)
 
 How the admin access works:
 
@@ -175,8 +196,8 @@ Browser (GitHub Pages, static)
  └─ fetch ────────────────── RAGFlow chat (native or OpenAI-compatible) + dataset API
 ```
 
-- Browsing the archive is free. Downloading and the tutor require a verified email.
-- The tutor streams tokens and renders the cited documents under each answer.
+- Browsing the archive is free. Downloading and both tutors require a verified email.
+- The AI tutor streams tokens and renders the cited documents under each answer; human tutor requests are stored in Supabase and triaged by admins.
 - Downloads are fetched with the RAGFlow key, then saved through a blob URL; RAGFlow's `Content-Disposition` is not required.
 - Download history is best-effort logged to `downloads` (RLS keeps it per-user).
 - No server is required: `next build` produces a pure static `out/` directory.
@@ -186,7 +207,7 @@ Browser (GitHub Pages, static)
 ### Security notes
 
 - The RAGFlow key reaches the browser bundle. Treat it as public and revocable; create a dedicated key.
-- Supabase RLS: papers are read-only publicly (published only), downloads are per-user, profiles are self-only.
+- Supabase RLS: papers are read-only publicly (published only), downloads/teacher applications/human requests are per-user, profiles are self-only. Admin writes are gated by `is_admin()`.
 - Do not put the Supabase `service_role` key into any `NEXT_PUBLIC_*` variable.
 - For production-grade key hiding, add a proxy (e.g. a Supabase Edge Function or Cloudflare Worker) later; the client API layer is isolated in `lib/ragflow.ts`.
 
@@ -199,15 +220,19 @@ app/
   page.tsx              landing page (hero, archive preview, tutor section, how it works)
   papers/page.tsx       archive: search, subject/year filters, downloads
   tutor/page.tsx        AI tutor with auth gating + connection settings
-  login|signup|verify   email/password auth flow
-  account/page.tsx      profile, verification status, download history
+  tutor/human/page.tsx  human tutor request form + request history
+  login|signup|verify   email/password auth flow; optional teacher application
+  account/page.tsx      profile, verification status, teacher application, downloads
+  admin/                Analytics, Overview, App Users, Tutors, Data, Logs, Settings, placeholders
   auth/callback/page.tsx  Supabase email-confirmation landing
-components/             Header, Footer, PaperCard, ChatPanel, AuthProvider, ConnectionSettings
+components/             Header, Footer, PaperCard, ChatPanel, TutorTabs, AdminShell, AnalyticsTracker
 lib/
   supabase.ts           client + appUrl()
-  ragflow.ts            OpenAI-compatible chat, dataset listing/download
+  ragflow.ts            native/OpenAI-compatible chat, dataset listing/download
+  analytics.ts          admin analytics types, country estimate, formatters
   papers.ts             archive loading + sample fallback
-supabase/schema.sql     tables, RLS, starter rows
+public/                 brand-mark.png, favicon.png, apple-touch-icon.png
+supabase/schema.sql     tables, RLS, functions, starter rows
 .github/workflows/      GitHub Pages deployment
 ```
 

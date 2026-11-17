@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -8,6 +9,7 @@ import {
   MessageSquareText,
   ShieldCheck,
   Sparkles,
+  UserRound,
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -17,7 +19,10 @@ import { samplePapers } from '@/lib/papers';
 function HeroPapers() {
   return (
     <div className="relative hidden h-[420px] lg:block" aria-hidden>
-      <div className="absolute left-0 top-28 w-[238px] -rotate-[9deg] rounded-xl border border-line bg-white/70 p-5 shadow-card">
+      <div
+        className="float-card float-card-delay-1 absolute left-0 top-28 w-[238px] rounded-xl border border-line bg-white/70 p-5 shadow-card"
+        style={{ '--rot': '-9deg' } as CSSProperties}
+      >
         <p className="text-[10px] uppercase tracking-[0.16em] text-muted">Mathematics</p>
         <div className="mt-6 space-y-2">
           <div className="h-1.5 w-4/5 rounded-full bg-line/80" />
@@ -27,7 +32,10 @@ function HeroPapers() {
         <p className="mt-10 text-[11px] text-muted">Paper 1 · 2024</p>
       </div>
 
-      <div className="absolute left-[66px] top-4 w-[252px] -rotate-[3deg] rounded-xl border border-line bg-white/85 p-5 shadow-card">
+      <div
+        className="float-card float-card-delay-2 absolute left-[112px] top-4 w-[248px] rounded-xl border border-line bg-white/85 p-5 shadow-card"
+        style={{ '--rot': '-3deg' } as CSSProperties}
+      >
         <p className="text-[10px] uppercase tracking-[0.16em] text-muted">Chemistry</p>
         <div className="mt-6 space-y-2">
           <div className="h-1.5 w-3/4 rounded-full bg-line/80" />
@@ -38,7 +46,10 @@ function HeroPapers() {
         <p className="mt-10 text-[11px] text-muted">Paper 3 · 2025</p>
       </div>
 
-      <div className="absolute right-0 top-20 w-[272px] rotate-[7deg] rounded-xl border border-line bg-white p-5 shadow-float">
+      <div
+        className="float-card absolute right-0 top-20 w-[272px] rounded-xl border border-line bg-white p-5 shadow-float"
+        style={{ '--rot': '7deg' } as CSSProperties}
+      >
         <p className="text-[10px] uppercase tracking-[0.16em] text-muted">Physics</p>
         <div className="mt-6 space-y-2">
           <div className="h-1.5 w-5/6 rounded-full bg-line/90" />
@@ -49,7 +60,7 @@ function HeroPapers() {
         <p className="mt-10 text-[11px] text-muted">Paper 2 · 2024</p>
       </div>
 
-      <div className="absolute bottom-6 right-2 flex items-center gap-2 rounded-full border border-line bg-paper px-4 py-2 shadow-card">
+      <div className="float-soft absolute bottom-6 right-2 flex items-center gap-2 rounded-full border border-line bg-paper px-4 py-2 shadow-card">
         <CheckCircle2 className="h-4 w-4 text-[#3f7d5a]" />
         <span className="text-[12px] text-muted">Answered from your notes</span>
       </div>
@@ -128,7 +139,7 @@ const steps = [
   {
     number: '03',
     title: 'Ask the tutor',
-    body: "Stuck at 11pm? Ask about any question and get an answer with the source it came from.",
+    body: 'Ask the AI tutor any question, or book a human tutor when you want a person — answers come with sources.',
   },
 ];
 
@@ -142,20 +153,20 @@ export default function HomePage() {
       <main>
         {/* Hero */}
         <section className="container-page pb-16 pt-14 sm:pt-20 lg:pb-20">
-          <div className="grid items-center gap-12 lg:grid-cols-[1.08fr_0.92fr]">
-            <div>
-              <p className="eyebrow">Past papers · AI tutor</p>
-              <h1 className="mt-5 font-display text-[clamp(42px,10.5vw,78px)] leading-[0.98] tracking-[-0.02em]">
+          <div className="grid items-center gap-12 lg:grid-cols-[1.12fr_0.88fr]">
+            <div className="animate-fade-up">
+              <p className="eyebrow">Past papers · AI + human tutors</p>
+              <h1 className="mt-5 font-display text-[clamp(38px,8.2vw,64px)] leading-[0.98] tracking-[-0.02em]">
                 Every past paper.
                 <br />
                 Every question
                 <br />
                 <em className="italic">answered.</em>
               </h1>
-              <p className="mt-7 max-w-[470px] text-[14.5px] leading-relaxed text-muted">
+              <p className="mt-7 max-w-[480px] text-[14.5px] leading-relaxed text-muted">
                 Maths, sciences, economics, law and professional subjects — one archive. Download
-                the papers, then ask the AI tutor about any question you get stuck on. It answers
-                from the course&apos;s own material, with the source shown.
+                the papers, ask the AI tutor about anything you get stuck on, or book a human tutor
+                when you want a person. Answers come with the source shown.
               </p>
 
               <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -178,7 +189,9 @@ export default function HomePage() {
               </div>
             </div>
 
-            <HeroPapers />
+            <div className="animate-fade-up">
+              <HeroPapers />
+            </div>
           </div>
         </section>
 
@@ -224,13 +237,13 @@ export default function HomePage() {
         <section className="border-t border-line/60">
           <div className="container-page grid gap-12 py-16 sm:py-20 lg:grid-cols-[0.92fr_1.08fr] lg:items-start">
             <div>
-              <p className="eyebrow">AI tutor</p>
-              <h2 className="mt-4 max-w-[420px] font-display text-[40px] leading-[1.02] tracking-[-0.01em] sm:text-[46px]">
+              <p className="eyebrow">Tutors</p>
+              <h2 className="mt-4 max-w-[430px] font-display text-[38px] leading-[1.0] tracking-[-0.01em] sm:text-[44px]">
                 Stuck at 11pm? Ask it like you&apos;d ask a tutor.
               </h2>
-              <p className="mt-5 max-w-[400px] text-[14px] leading-relaxed text-muted">
-                The tutor runs on your knowledge base, so the explanations match how the course
-                actually teaches it.
+              <p className="mt-5 max-w-[420px] text-[14px] leading-relaxed text-muted">
+                The AI tutor runs on your knowledge base, so the explanations match how the course
+                actually teaches it. Prefer a person? Book a human tutor for a live walkthrough.
               </p>
 
               <ul className="mt-8 space-y-5">
@@ -249,9 +262,16 @@ export default function HomePage() {
                 ))}
               </ul>
 
-              <Link href="/tutor" className="btn-dark mt-9 px-5 py-3">
-                Open the tutor
-              </Link>
+              <div className="mt-9 flex flex-wrap items-center gap-3">
+                <Link href="/tutor" className="btn-dark px-5 py-3">
+                  <Sparkles className="h-4 w-4" aria-hidden />
+                  Open the AI tutor
+                </Link>
+                <Link href="/tutor/human" className="btn-light px-5 py-3">
+                  <UserRound className="h-4 w-4" aria-hidden />
+                  Book a human tutor
+                </Link>
+              </div>
             </div>
 
             <TutorMock />

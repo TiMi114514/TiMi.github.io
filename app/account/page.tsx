@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { BadgeCheck, Download, LogOut, MailWarning } from 'lucide-react';
+import { BadgeCheck, Download, GraduationCap, LogOut, MailWarning } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { useAuth } from '@/components/AuthProvider';
@@ -15,12 +15,33 @@ type DownloadRow = {
   created_at: string;
 };
 
+type TeacherApplication = {
+  id: string;
+  subjects: string | null;
+  message: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+};
+
+const teacherStatusCopy: Record<TeacherApplication['status'], string> = {
+  pending: 'Waiting for admin review. We will update this page once it is reviewed.',
+  approved: 'Approved — you can now take human tutor sessions.',
+  rejected: 'Not approved this time. Contact the team if you would like to reapply.',
+};
+
+const teacherStatusStyles: Record<TeacherApplication['status'], string> = {
+  pending: 'border-[#fde68a] bg-[#fffbeb] text-[#b45309]',
+  approved: 'border-[#cfe1d4] bg-[#eef5ef] text-[#3f7d5a]',
+  rejected: 'border-[#e7c9c1] bg-[#fbeeea] text-[#8a3b2a]',
+};
+
 export default function AccountPage() {
   const router = useRouter();
   const { user, loading, verified, signOut, refresh } = useAuth();
   const [resending, setResending] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [history, setHistory] = useState<DownloadRow[] | null>(null);
+  const [teacherApplication, setTeacherApplication] = useState<TeacherApplication | null>(null);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -38,6 +59,19 @@ export default function AccountPage() {
       .then(({ data }) => {
         if (active) setHistory((data as DownloadRow[] | null) ?? []);
       });
+
+    supabase
+      .from('teacher_applications')
+      .select('id, subjects, message, status, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        if (!active) return;
+        const rows = (data as TeacherApplication[] | null) ?? [];
+        setTeacherApplication(rows[0] ?? null);
+      });
+
     return () => {
       active = false;
     };
@@ -123,7 +157,7 @@ export default function AccountPage() {
             {!verified ? (
               <div className="mt-6 rounded-xl border border-[#e7d3b0] bg-[#fbf3e2] px-4 py-3">
                 <p className="text-[13px] leading-relaxed text-[#6d5320]">
-                  Verify your email to unlock downloads and the AI tutor.
+                  Verify your email to unlock downloads and both tutors.
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   <button
@@ -149,13 +183,44 @@ export default function AccountPage() {
                 <Download className="h-4 w-4" aria-hidden /> Browse papers
               </Link>
               <Link href="/tutor" className="btn-light px-4 py-2">
-                Open the tutor
+                Open the AI tutor
+              </Link>
+              <Link href="/tutor/human" className="btn-light px-4 py-2">
+                <GraduationCap className="h-4 w-4" aria-hidden /> Human tutor
               </Link>
               <button type="button" onClick={handleSignOut} className="btn-outline ml-auto">
                 <LogOut className="h-3.5 w-3.5" aria-hidden /> Sign out
               </button>
             </div>
           </div>
+
+          {teacherApplication ? (
+            <div className="card mt-6 p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="grid h-9 w-9 place-items-center rounded-lg border border-line bg-cream">
+                    <GraduationCap className="h-4 w-4" aria-hidden />
+                  </span>
+                  <div>
+                    <h2 className="font-display text-[20px] leading-none">Teacher application</h2>
+                    <p className="mt-1 text-[11.5px] text-muted">
+                      {teacherApplication.subjects || 'Subjects not specified'}
+                    </p>
+                  </div>
+                </div>
+                <span
+                  className={`rounded-full border px-2.5 py-0.5 text-[11px] capitalize ${
+                    teacherStatusStyles[teacherApplication.status]
+                  }`}
+                >
+                  {teacherApplication.status}
+                </span>
+              </div>
+              <p className="mt-3 text-[12.5px] leading-relaxed text-muted">
+                {teacherStatusCopy[teacherApplication.status]}
+              </p>
+            </div>
+          ) : null}
 
           <div className="mt-10">
             <div className="flex items-end justify-between gap-4">

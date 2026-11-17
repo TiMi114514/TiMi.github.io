@@ -1,19 +1,25 @@
 import Link from 'next/link';
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+
 export function Footer() {
   return (
     <footer className="mt-24 border-t border-line/70 bg-cream">
       <div className="container-page flex flex-col gap-8 py-12 sm:flex-row sm:items-start sm:justify-between">
         <div className="max-w-sm">
-          <Link href="/" className="flex items-center gap-2.5">
-            <span className="grid h-8 w-8 place-items-center rounded-md bg-ink font-display text-[19px] leading-none text-cream">
-              P
-            </span>
-            <span className="font-display text-[20px]">Paperwise</span>
+          <Link href="/" className="group flex items-center gap-2.5">
+            <img
+              src={`${basePath}/brand-mark.png`}
+              alt=""
+              width={36}
+              height={36}
+              className="h-9 w-9 rounded-lg object-cover transition-transform duration-300 group-hover:-rotate-3 group-hover:scale-105"
+            />
+            <span className="font-display text-[20px]">Differential Quant</span>
           </Link>
           <p className="mt-4 text-[13px] leading-relaxed text-muted">
-            Past papers and an AI tutor that answers from the course&apos;s own material — with the
-            sources shown.
+            Past papers, an AI tutor grounded in the course material, and human tutors when you
+            want a person — with the sources shown.
           </p>
         </div>
 
@@ -25,6 +31,9 @@ export function Footer() {
             </Link>
             <Link href="/tutor" className="block transition-colors hover:text-ink">
               AI tutor
+            </Link>
+            <Link href="/tutor/human" className="block transition-colors hover:text-ink">
+              Human tutor
             </Link>
             <Link href="/#how-it-works" className="block transition-colors hover:text-ink">
               How it works
@@ -46,7 +55,7 @@ export function Footer() {
       </div>
       <div className="border-t border-line/70">
         <div className="container-page flex flex-col gap-2 py-5 text-[11.5px] text-muted sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} Paperwise. Built with Next.js, Supabase and RAGFlow.</p>
+          <p>© {new Date().getFullYear()} Differential Quant. Built with Next.js, Supabase and RAGFlow.</p>
           <p>Answers are generated from your knowledge base. Always check the cited source.</p>
         </div>
       </div>

@@ -26,7 +26,7 @@ export function PaperCard({
         {paper.year ? <span className="text-[13px] text-muted">{paper.year}</span> : null}
       </div>
 
-      <h3 className="mt-5 font-display text-[27px] leading-[1.08] tracking-[-0.01em]">
+      <h3 className="mt-5 font-display text-[25px] leading-[1.1] tracking-[-0.01em]">
         {paper.title}
       </h3>
 

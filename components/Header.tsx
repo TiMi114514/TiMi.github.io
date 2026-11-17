@@ -4,9 +4,11 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from './AuthProvider';
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+
 const nav = [
   { href: '/papers', label: 'Past papers' },
-  { href: '/tutor', label: 'AI tutor' },
+  { href: '/tutor', label: 'Tutors' },
   { href: '/#how-it-works', label: 'How it works' },
 ];
 
@@ -28,12 +30,22 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-line/60 bg-cream/90 backdrop-blur">
-      <div className="container-page flex h-[72px] items-center justify-between gap-6">
-        <Link href="/" className="flex items-center gap-2.5" aria-label="Paperwise home">
-          <span className="grid h-8 w-8 place-items-center rounded-md bg-ink font-display text-[19px] leading-none text-cream">
-            P
+      <div className="container-page flex h-[72px] items-center justify-between gap-3 sm:gap-6">
+        <Link
+          href="/"
+          className="group flex items-center gap-2.5"
+          aria-label="Differential Quant home"
+        >
+          <img
+            src={`${basePath}/brand-mark.png`}
+            alt=""
+            width={36}
+            height={36}
+            className="h-9 w-9 rounded-lg object-cover transition-transform duration-300 group-hover:-rotate-3 group-hover:scale-105"
+          />
+          <span className="whitespace-nowrap font-display text-[17px] tracking-[-0.01em] transition-colors group-hover:text-[#2b2921] sm:text-[20px]">
+            Differential Quant
           </span>
-          <span className="font-display text-[20px] tracking-[-0.01em]">Paperwise</span>
         </Link>
 
         <nav className="hidden items-center gap-8 text-[13px] text-muted md:flex">
@@ -60,7 +72,7 @@ export function Header() {
               {isAdmin ? (
                 <Link
                   href="/admin"
-                  className="hidden rounded-full border border-line bg-paper/70 px-3 py-2 text-[12.5px] text-ink transition-colors hover:bg-white sm:inline-flex"
+                  className="hidden rounded-full border border-line bg-paper/70 px-3 py-2 text-[12.5px] text-ink transition-all duration-200 hover:-translate-y-0.5 hover:bg-white sm:inline-flex"
                 >
                   Admin
                 </Link>

@@ -14,6 +14,9 @@ export default function SignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [applyTeacher, setApplyTeacher] = useState(false);
+  const [teacherSubjects, setTeacherSubjects] = useState('');
+  const [teacherMessage, setTeacherMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,6 +52,20 @@ export default function SignupPage() {
       return;
     }
 
+    if (applyTeacher) {
+      await supabase
+        .from('teacher_applications')
+        .insert({
+          user_id: data.user?.id ?? null,
+          email: email.trim(),
+          display_name: name.trim() || null,
+          subjects: teacherSubjects.trim() || null,
+          message: teacherMessage.trim() || null,
+          status: 'pending',
+        })
+        .then(() => undefined, () => undefined);
+    }
+
     window.sessionStorage.setItem('paperwise.pendingEmail', email.trim());
 
     if (data.session) {
@@ -68,7 +85,7 @@ export default function SignupPage() {
             Start with the archive
           </h1>
           <p className="mt-3 text-[13.5px] leading-relaxed text-muted">
-            Free to browse. One email check unlocks downloads and the tutor.
+            Free to browse. One email check unlocks downloads and both tutors.
           </p>
 
           <form onSubmit={submit} className="mt-8 space-y-4">
@@ -108,6 +125,46 @@ export default function SignupPage() {
                 placeholder="At least 8 characters"
               />
             </label>
+
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-paper/60 px-3.5 py-3 transition-colors hover:bg-paper">
+              <input
+                type="checkbox"
+                checked={applyTeacher}
+                onChange={(event) => setApplyTeacher(event.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-ink"
+              />
+              <span>
+                <span className="block text-[13px] text-ink">Apply to become a teacher</span>
+                <span className="mt-0.5 block text-[11.5px] leading-relaxed text-muted">
+                  Optional — reviewed by the Differential Quant team. Approved teachers can take
+                  human tutor sessions.
+                </span>
+              </span>
+            </label>
+
+            {applyTeacher ? (
+              <div className="animate-fade-up space-y-3 rounded-xl border border-line bg-paper/60 p-3.5">
+                <label className="block space-y-1.5 text-[12.5px] text-muted">
+                  <span>Subjects you teach</span>
+                  <input
+                    className="input"
+                    value={teacherSubjects}
+                    onChange={(event) => setTeacherSubjects(event.target.value)}
+                    placeholder="Mathematics, Physics…"
+                  />
+                </label>
+                <label className="block space-y-1.5 text-[12.5px] text-muted">
+                  <span>Short introduction</span>
+                  <textarea
+                    rows={3}
+                    className="input resize-y"
+                    value={teacherMessage}
+                    onChange={(event) => setTeacherMessage(event.target.value)}
+                    placeholder="Qualifications, exam boards, teaching experience…"
+                  />
+                </label>
+              </div>
+            ) : null}
 
             {error ? (
               <p className="rounded-xl border border-[#e7c9c1] bg-[#fbeeea] px-3 py-2 text-[12.5px] leading-relaxed text-[#8a3b2a]">

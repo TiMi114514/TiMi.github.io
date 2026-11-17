@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Instrument_Serif } from 'next/font/google';
+import { Inter, Source_Serif_4 } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/components/AuthProvider';
 import { AnalyticsTracker } from '@/components/AnalyticsTracker';
@@ -10,20 +10,22 @@ const inter = Inter({
   display: 'swap',
 });
 
-const display = Instrument_Serif({
+const display = Source_Serif_4({
   subsets: ['latin'],
-  weight: '400',
   style: ['normal', 'italic'],
   variable: '--font-display',
   display: 'swap',
 });
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+
 export const metadata: Metadata = {
-  title: 'Paperwise — Every past paper. Every question answered.',
+  title: 'Differential Quant — Past papers, AI and human tutors',
   description:
-    'One archive for past papers, plus an AI tutor grounded in your course material, with the sources shown.',
+    'Past papers plus an AI tutor grounded in your course material and human tutors on demand — with the sources shown.',
   icons: {
-    icon: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/favicon.svg`,
+    icon: `${basePath}/favicon.png`,
+    apple: `${basePath}/apple-touch-icon.png`,
   },
 };
 

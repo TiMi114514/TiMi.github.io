@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { AdminShell } from '@/components/AdminShell';
 
 export const metadata: Metadata = {
-  title: 'Admin — Paperwise',
+  title: 'Admin — Differential Quant',
   robots: { index: false, follow: false },
 };
 

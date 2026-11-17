@@ -10,6 +10,7 @@ import {
   Code2,
   Database,
   Globe,
+  GraduationCap,
   KeyRound,
   LayoutDashboard,
   LineChart,
@@ -30,6 +31,7 @@ import { useAuth } from './AuthProvider';
 const navItems = [
   { href: '/admin/overview', label: 'Overview', icon: LayoutDashboard },
   { href: '/admin/users', label: 'App Users', icon: Users },
+  { href: '/admin/tutors', label: 'Tutors', icon: GraduationCap },
   { href: '/admin/data', label: 'Data', icon: Database },
   { href: '/admin', label: 'Analytics', icon: LineChart, exact: true },
   { href: '/admin/marketing', label: 'Marketing', icon: Megaphone },
@@ -195,7 +197,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <div className="lg:pl-[248px]">
         <div className="sticky top-0 z-20 border-b border-[#e4e4e7] bg-white lg:hidden">
           <div className="flex items-center justify-between px-4 py-3">
-            <span className="text-[14px] font-semibold">Paperwise admin</span>
+            <span className="text-[14px] font-semibold">Differential Quant admin</span>
             <Link href="/" className="flex items-center gap-1.5 text-[12px] text-[#71717a]">
               <ArrowLeft className="h-3.5 w-3.5" /> Back
             </Link>

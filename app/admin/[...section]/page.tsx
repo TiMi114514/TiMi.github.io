@@ -52,7 +52,7 @@ const sections: Record<
   agents: {
     title: 'Agents',
     description:
-      'The AI tutor is a RAGFlow chat assistant. Assistants and their knowledge bases are managed inside RAGFlow.',
+      'The AI tutor is a RAGFlow chat assistant. Human tutor requests are reviewed under Tutors.',
     icon: Bot,
     note: 'Use the Connection settings on the tutor page to switch assistants.',
   },
@@ -115,7 +115,7 @@ export default async function AdminPlaceholderPage({
       <h1 className="text-[28px] font-semibold tracking-[-0.02em] sm:text-[32px]">
         {content.title}
       </h1>
-      <p className="mt-1 text-[13px] text-[#71717a]">Part of the Paperwise admin shell.</p>
+      <p className="mt-1 text-[13px] text-[#71717a]">Part of the Differential Quant admin shell.</p>
 
       <section className="mt-6 max-w-2xl rounded-xl border border-[#e4e4e7] bg-white p-8">
         <span className="grid h-11 w-11 place-items-center rounded-lg border border-[#e4e4e7] bg-[#fafafa]">
