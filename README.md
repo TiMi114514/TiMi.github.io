@@ -30,7 +30,7 @@ Already configured in the Supabase project `wksdpsmxwybsmtjjipxa`:
 
 Still environment-dependent:
 
-- RAGFlow runs on the owner's machine (`http://localhost:9380`). The public site therefore reads the archive from Supabase and the tutor reports a connection error until RAGFlow gets a public URL (tunnel or server). On the owner's machine the tutor and the full 700-document archive work.
+- RAGFlow runs on the owner's machine (`http://localhost:9380`). The public site therefore reads the archive from Supabase and the tutor reports a connection error until RAGFlow gets a public URL (tunnel or server). On the owner's machine the tutor and the full ~4,500-document archive work.
 - Supabase's built-in email sender has low limits. Add custom SMTP (Authentication → Emails) for reliable verification in production.
 
 ## Tutors: AI and human
@@ -68,9 +68,12 @@ Admins review applications under **Admin → Tutors**, can open the attachment t
 Browsing and downloading are public — no account is required.
 
 - Guests are limited to **one document per second**. The timestamp lives in `sessionStorage` and the check runs before the RAGFlow or Supabase download starts.
-- This is a client-side throttle; a static GitHub Pages site cannot enforce a hard server-side rate limit. If you need strict enforcement, proxy downloads through a Cloudflare Worker or Supabase Edge Function (RAGFlow must be publicly reachable first).
+- This is a client-side throttle; a static GitHub Pages site cannot enforce a hard server-side rate limit. If you need strict enforcement, proxy downloads through a Cloudflare Worker or Supabase Edge Function.
 - Signed-in users are not throttled, and their downloads are logged to the `downloads` table.
-- Archive responses are cached in `sessionStorage` for five minutes, so navigating back to `/papers` does not re-query all eight RAGFlow datasets.
+- The archive lists **every document in every dataset**, grouped by dataset and shown under its original file name. There is no title parsing, no year guessing and no renaming.
+- Each dataset shows 12 rows first and has its own "Show more" control; all documents are loaded up front, so search covers the full archive.
+- Archive responses are cached in `sessionStorage` for 30 minutes; the Refresh button bypasses the cache and re-reads all dataset pages.
+- A-Level Chinese 9868 currently has 0 documents, so it has no group; the other eight datasets contain 4,503 documents.
 
 ## Password reset
 
@@ -190,7 +193,7 @@ Copy `.env.example` to `.env.local` and fill in:
 The app talks to RAGFlow from the browser, so the RAGFlow API server must be reachable from the visitor's browser and allow CORS. Both are true for the local instance tested here (`access-control-allow-origin: *`).
 
 1. Create an **API key** in RAGFlow user settings.
-2. Ingest your past papers and course material into one or more **datasets** (knowledge bases). The archive reads every dataset listed in `NEXT_PUBLIC_RAGFLOW_DATASET_ID` (comma separated, first 100 documents each, "Show more" paginates in the UI).
+2. Ingest your past papers and course material into one or more **datasets** (knowledge bases). The archive reads **every dataset and every page of documents**; `NEXT_PUBLIC_RAGFLOW_DATASET_ID` is only a fallback when the datasets API is unavailable.
 3. Create one **chat assistant per subject**, named `DQ · <Subject>` (for example `DQ · Chemistry`), and bind it to that subject's dataset. A `DQ · General` assistant can bind several datasets. The tutor lists every assistant with the `DQ · ` prefix, so a new one appears in the selector automatically. Datasets with zero parsed chunks cannot be bound to an assistant until they are parsed.
 4. The public tutor uses the **OpenAI-compatible** endpoint for answers:
    `POST {baseUrl}/api/v1/chats_openai/{chat_id}/chat/completions` with `{model, messages, stream}`. RAGFlow expects `model` to be the assistant's internal `llm_id`; the app resolves it via `GET /api/v1/chats` and caches it. This endpoint returns only the final answer, so the model's chain of thought is not shown. Citations are fetched separately from `POST /api/v1/retrieval` using `document_keyword`.
@@ -202,7 +205,7 @@ The app talks to RAGFlow from the browser, so the RAGFlow API server must be rea
    GET  {baseUrl}/api/v1/datasets/{dataset_id}/documents?page=1&page_size=100
    GET  {baseUrl}/api/v1/datasets/{dataset_id}/documents/{document_id} # authenticated download
    ```
-   File names like `9700_w19_ms_22.pdf` are turned into readable titles ("9700 · November 2019 · Mark scheme 22"), subjects come from the dataset name, and years come from the file name. If no dataset id is set, the app reads the Supabase `papers` table, then falls back to sample cards.
+   File names are shown exactly as stored (`9990_m26_gt.pdf`), grouped by dataset name; no year, paper type or title parsing is applied. If RAGFlow is unreachable, the app reads the Supabase `papers` table, then falls back to sample cards.
 6. **CORS**: if your deployment does not send `Access-Control-Allow-Origin` for the site origin, put a small reverse proxy in front (Nginx `add_header 'Access-Control-Allow-Origin' '*'` plus preflight handling) or use a tunnel with CORS.
 7. **Localhost isn't public**: a site served from GitHub Pages cannot reach `http://localhost:9380` on your machine. Until RAGFlow is exposed:
    - Cloudflare Tunnel / ngrok / frp → put the public URL in **Admin → Settings → RAGFlow connection**, or
@@ -246,7 +249,7 @@ npx serve out         # preview
 npx tsx scripts/test-ragflow.ts     # archive, assistants, OpenAI answers and retrieval citations
 ```
 
-The local RAGFlow instance used during development responded on `http://localhost:9380`, CORS `*`, assistant `f37a7a58e16c11f19cd2051ed6437597` (Biology dataset) and seven other A-Level datasets. The test prints 700 archive documents and citation names.
+The local RAGFlow instance used during development responded on `http://localhost:9380`, CORS `*`, with nine datasets (eight containing documents, 4,503 total). The test prints every document and citation names.
 
 ---
 
@@ -262,7 +265,7 @@ Browser (GitHub Pages, static)
 - The AI tutor streams tokens and renders the cited documents under each answer; human tutor requests are stored in Supabase and triaged by admins.
 - Downloads are fetched with the RAGFlow key, then saved through a blob URL; RAGFlow's `Content-Disposition` is not required.
 - Download history is best-effort logged to `downloads` for signed-in users (RLS keeps it per-user).
-- Archive results are cached in `sessionStorage` for five minutes; analytics polling is five minutes and pauses on hidden tabs.
+- Archive results are cached in `sessionStorage` for 30 minutes; analytics polling is five minutes and pauses on hidden tabs.
 - No server is required: `next build` produces a pure static `out/` directory.
 
 > **Windows / exFAT note**: this repository was built from an exFAT drive, where `readlink()` on regular files reports `EISDIR` and breaks Next.js file tracing. `scripts/patch-fs.cjs` normalizes that behaviour and `scripts/next.cjs` loads it for the build and every worker. On NTFS / Linux it is a no-op.
@@ -299,7 +302,7 @@ lib/
   teacher-email.ts      FormSubmit forwarding for teacher applications
   analytics.ts          admin analytics types, country estimate, formatters
   pomodoro.ts           timer helpers, defaults and duration clamping
-  papers.ts             archive loading, five-minute cache, sample fallback
+  papers.ts             archive loading (all datasets, paginated), 30-minute cache, sample fallback
 public/                 brand-mark.png, favicon.png, apple-touch-icon.png
 supabase/schema.sql     tables, RLS, functions, storage bucket, starter rows
 .github/workflows/      GitHub Pages deployment

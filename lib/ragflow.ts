@@ -559,56 +559,108 @@ function parsePaperMeta(filename: string): {
   };
 }
 
-async function fetchDatasetDocuments(cfg: RagflowConfig, datasetId: string): Promise<RagflowDocument[]> {
-  const url = `${cfg.baseUrl}/api/v1/datasets/${encodeURIComponent(datasetId)}/documents?page=1&page_size=100`;
+async function listRagflowDatasets(cfg: RagflowConfig): Promise<RagflowDataset[]> {
+  const res = await fetch(`${cfg.baseUrl}/api/v1/datasets?page=1&page_size=100`, {
+    headers: authHeaders(cfg),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(errorMessage(res.status, res.statusText, text));
+  }
+  const json = await res.json();
+  const datasets = (json?.data ?? []) as RagflowDataset[];
+  return datasets.filter((dataset) => dataset.id && dataset.name);
+}
+
+async function fetchDocumentPage(
+  cfg: RagflowConfig,
+  datasetId: string,
+  page: number,
+): Promise<{ docs: RagflowDocument[]; total: number }> {
+  const url = `${cfg.baseUrl}/api/v1/datasets/${encodeURIComponent(datasetId)}/documents?page=${page}&page_size=100`;
   const res = await fetch(url, { headers: authHeaders(cfg) });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(errorMessage(res.status, res.statusText, text));
   }
-  const json = (await res.json()) as { data?: { docs?: RagflowDocument[] } };
-  return json?.data?.docs ?? [];
+  const json = (await res.json()) as {
+    data?: { docs?: RagflowDocument[]; total?: number };
+  };
+  return {
+    docs: json?.data?.docs ?? [],
+    total: Number(json?.data?.total ?? 0),
+  };
+}
+
+/** Fetch every document in a dataset, following RAGFlow's 100-row pages. */
+async function fetchDatasetDocuments(
+  cfg: RagflowConfig,
+  datasetId: string,
+): Promise<RagflowDocument[]> {
+  const first = await fetchDocumentPage(cfg, datasetId, 1);
+  if (first.docs.length === 0) return [];
+
+  const total = first.total > 0 ? first.total : first.docs.length;
+  const pageCount = Math.min(200, Math.ceil(total / 100));
+  const rest = await Promise.all(
+    Array.from({ length: Math.max(0, pageCount - 1) }, (_, index) =>
+      fetchDocumentPage(cfg, datasetId, index + 2).catch(() => ({ docs: [], total: 0 })),
+    ),
+  );
+
+  const seen = new Set<string>();
+  const docs: RagflowDocument[] = [];
+  for (const doc of [first.docs, ...rest.map((page) => page.docs)].flat()) {
+    if (!doc?.id || seen.has(doc.id)) continue;
+    seen.add(doc.id);
+    docs.push(doc);
+  }
+  return docs;
 }
 
 /**
- * Read the archive out of one or more RAGFlow datasets. Documents are
- * mapped to readable titles, subjects (dataset name), years and paper types.
+ * Read every document from every RAGFlow dataset. Titles are the raw document
+ * names (basename) and no year/type parsing is performed, so the archive mirrors
+ * the knowledge base exactly.
  */
 export async function listRagflowDocuments(cfg: RagflowConfig): Promise<Paper[]> {
-  const ids = datasetIds(cfg);
-  if (ids.length === 0) throw new Error('No RAGFlow dataset id configured.');
+  let datasets = await listRagflowDatasets(cfg).catch(() => []);
+  if (datasets.length === 0) {
+    datasets = datasetIds(cfg).map((id) => ({ id, name: id }));
+  }
+  if (datasets.length === 0) throw new Error('No RAGFlow datasets found.');
 
-  const [names, ...documents] = await Promise.all([
-    fetchDatasetNames(cfg),
-    ...ids.map((id) => fetchDatasetDocuments(cfg, id)),
-  ]);
+  const results = await Promise.allSettled(
+    datasets.map((dataset) => fetchDatasetDocuments(cfg, dataset.id)),
+  );
 
   const papers: Paper[] = [];
-  ids.forEach((datasetId, index) => {
-    const datasetName = names[datasetId] || 'General';
-    const subject = datasetName.replace(/\s*\d{3,4}\s*$/, '').trim() || datasetName;
-    for (const doc of documents[index] ?? []) {
-      const meta = doc.meta_fields ?? {};
-      const parsed = parsePaperMeta(doc.name);
-      const title = typeof meta.title === 'string' ? meta.title : parsed.title;
-      const year = typeof meta.year === 'number' ? meta.year : parsed.year;
-      const type = typeof meta.paper_type === 'string' ? meta.paper_type : parsed.type;
+  datasets.forEach((dataset, index) => {
+    const result = results[index];
+    if (result.status !== 'fulfilled') return;
+    for (const doc of result.value) {
+      const filename = doc.name.split('/').pop() || doc.name;
       papers.push({
         id: `ragflow-${doc.id}`,
-        title,
-        subject,
-        year,
-        type,
-        questions: typeof meta.questions === 'number' ? meta.questions : null,
+        title: filename,
+        subject: dataset.name,
+        year: null,
+        type: null,
+        questions: null,
         size: formatBytes(doc.size),
         source: 'ragflow',
         ragflowDocId: doc.id,
-        ragflowDatasetId: datasetId,
+        ragflowDatasetId: dataset.id,
       });
     }
   });
 
-  return papers;
+  return papers.sort((a, b) => {
+    const subjectDiff = a.subject.localeCompare(b.subject);
+    return subjectDiff !== 0
+      ? subjectDiff
+      : a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
+  });
 }
 
 /** Download a RAGFlow dataset document with an authenticated request. */

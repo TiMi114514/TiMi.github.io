@@ -80,17 +80,17 @@ function mapRow(row: Record<string, unknown>): Paper {
   };
 }
 
-const ARCHIVE_CACHE_KEY = 'differential-quant.archive.cache.v1';
-const ARCHIVE_CACHE_TTL = 5 * 60 * 1000;
+const ARCHIVE_CACHE_KEY = 'differential-quant.archive.cache.v2';
+const ARCHIVE_CACHE_TTL = 30 * 60 * 1000;
 
 /**
  * Load the archive. Priority:
- *   1. RAGFlow dataset (if configured)  — the source of truth once your papers are ingested
+ *   1. Every document in every RAGFlow dataset
  *   2. Supabase `papers` table
  *   3. Built-in sample data              — so the site always renders
  */
-export async function fetchArchive(): Promise<ArchiveResult> {
-  if (typeof window !== 'undefined') {
+export async function fetchArchive(force = false): Promise<ArchiveResult> {
+  if (!force && typeof window !== 'undefined') {
     try {
       const raw = window.sessionStorage.getItem(ARCHIVE_CACHE_KEY);
       if (raw) {
@@ -123,18 +123,15 @@ export async function fetchArchive(): Promise<ArchiveResult> {
 async function loadArchive(): Promise<ArchiveResult> {
   const cfg = getRagflowConfig();
 
-  if (cfg.datasetId && cfg.apiKey) {
+  if (cfg.apiKey && cfg.baseUrl) {
     try {
       const papers = await listRagflowDocuments(cfg);
       if (papers.length > 0) {
-        papers.sort((a, b) => {
-          const yearDiff = (b.year ?? 0) - (a.year ?? 0);
-          return yearDiff !== 0 ? yearDiff : a.title.localeCompare(b.title);
-        });
+        const datasetCount = new Set(papers.map((paper) => paper.subject)).size;
         return {
           papers,
           source: 'ragflow',
-          note: 'Live from your RAGFlow knowledge base.',
+          note: `All ${papers.length} documents across ${datasetCount} RAGFlow datasets.`,
         };
       }
     } catch {
