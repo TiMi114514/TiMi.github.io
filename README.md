@@ -30,6 +30,8 @@ Still environment-dependent:
 
 Sign in with **JackyChen2027@outlook.com** and open **/admin** (an **Admin** link appears in the header for administrators).
 
+> The account was created through the site, added to the `admins` table, and its email was confirmed directly in Supabase because the built-in email sender was rate-limited at setup time. Sign in with the password chosen at registration; add custom SMTP for future verification emails.
+
 ![Admin analytics](docs/screenshots/admin.png)
 
 The shell mirrors the reference: search, Overview, App Users, Data, Analytics, Marketing, Domains, Integrations, Security, Code, Agents, Workflows, Emails, Logs, API, Settings, MCP and Secrets.
