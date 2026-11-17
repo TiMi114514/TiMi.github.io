@@ -15,9 +15,9 @@ The brand mark is the supplied **dx** image (cropped and exported to `public/bra
 | --- | --- | --- |
 | ![Landing](docs/screenshots/home.png) | ![Archive](docs/screenshots/archive.png) | ![Tutor](docs/screenshots/tutor.png) |
 
-| Pomodoro focus screen | Teacher application |
+| Pomodoro page | Focus screen |
 | --- | --- |
-| ![Pomodoro](docs/screenshots/pomodoro.png) | ![Teacher application](docs/screenshots/teacher-application.png) |
+| ![Pomodoro page](docs/screenshots/pomodoro-page.png) | ![Pomodoro focus](docs/screenshots/pomodoro.png) |
 
 **Deployed:** [timi114514.github.io/TiMi.github.io](https://timi114514.github.io/TiMi.github.io/)
 
@@ -56,6 +56,8 @@ Admins review applications under **Admin → Tutors**, can open the attachment t
 
 > FormSubmit requires a one-time activation: the first application sends an activation link to the owner's inbox. Click it once, then future applications arrive by email. Until activation, every application is still stored in Supabase and visible in the admin dashboard. The email relay is a third-party service; the Supabase copy is the source of truth.
 
+![Teacher application](docs/screenshots/teacher-application.png)
+
 - Public insert policy: only `pending` rows, so nobody can self-approve.
 - Storage upload policy allows anonymous uploads into the bucket; reads are admin-only.
 - Students can read only their own application (RLS), admins can read and update everything.
@@ -90,10 +92,12 @@ No timers, polling or additional requests drive the visuals, and `prefers-reduce
 
 ## Pomodoro timer
 
-The header has a Pomodoro control, available on every page:
+**Pomodoro** is a top-level navigation item alongside **Past papers** and **Tutors**, at `/pomodoro`:
 
-- 25-minute focus / 5-minute break sessions, start, pause and reset;
-- the remaining time survives navigation and reloads through `localStorage`;
+- defaults to **25-minute focus / 5-minute break** and lets each user adjust focus (1–180) and break (1–60) durations. Changes apply immediately when paused, or from the next session.
+- start, pause, reset and switch between focus and break;
+- the remaining time and custom durations survive navigation and reloads through `localStorage`;
+- the compact header control stays in sync with the page, so the timer can be started anywhere;
 - **Focus screen** enters the Fullscreen API with a pure black background showing the current clock and the remaining time, plus pause, reset, break and exit controls;
 - if the browser blocks fullscreen, the same black overlay still opens until you close it.
 
@@ -281,18 +285,20 @@ app/
   papers/page.tsx       public archive: search, filters, guest-throttled downloads
   tutor/page.tsx        AI tutor with auth gating and knowledge-base selector
   tutor/human/page.tsx  human tutor request form + request history
+  pomodoro/page.tsx     focus/break timer with adjustable durations
   login|signup|verify   email/password auth flow; optional teacher application with attachment
   forgot-password/page.tsx  request a reset link
   auth/reset/page.tsx   choose a new password from the recovery link
   account/page.tsx      profile, verification status, teacher application, downloads
   admin/                Analytics, Overview, App Users, Tutors, Data, Logs, Settings, placeholders
   auth/callback/page.tsx  Supabase email-confirmation landing
-components/             Header, Pomodoro, HeroPapers, PaperCard, ChatPanel, TutorWorkspace, TutorTabs, AdminShell, AnalyticsTracker
+components/             Header, Pomodoro, PomodoroProvider, HeroPapers, PaperCard, ChatPanel, TutorWorkspace, TutorTabs, AdminShell, AnalyticsTracker
 lib/
   supabase.ts           client + appUrl()
   ragflow.ts            OpenAI-compatible chat, assistant list, retrieval citations, dataset downloads
   teacher-email.ts      FormSubmit forwarding for teacher applications
   analytics.ts          admin analytics types, country estimate, formatters
+  pomodoro.ts           timer helpers, defaults and duration clamping
   papers.ts             archive loading, five-minute cache, sample fallback
 public/                 brand-mark.png, favicon.png, apple-touch-icon.png
 supabase/schema.sql     tables, RLS, functions, storage bucket, starter rows
