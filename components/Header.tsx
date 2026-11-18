@@ -34,6 +34,7 @@ export function Header() {
       <div className="container-page flex h-[72px] items-center justify-between gap-3 sm:gap-6">
         <Link
           href="/"
+          prefetch={false}
           className="group flex items-center gap-2.5"
           aria-label="A-Level Hub home"
         >

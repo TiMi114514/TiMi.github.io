@@ -7,7 +7,7 @@ export function Footer() {
     <footer className="mt-24 border-t border-line/70 bg-cream">
       <div className="container-page flex flex-col gap-8 py-12 sm:flex-row sm:items-start sm:justify-between">
         <div className="max-w-sm">
-          <Link href="/" className="group flex items-center gap-2.5">
+          <Link href="/" prefetch={false} className="group flex items-center gap-2.5">
             <img
               src={`${basePath}/brand-mark.png`}
               alt=""
