@@ -75,7 +75,7 @@ export default async function AdminPlaceholderPage({
       <h1 className="text-[28px] font-semibold tracking-[-0.02em] sm:text-[32px]">
         {content.title}
       </h1>
-      <p className="mt-1 text-[13px] text-[#71717a]">Part of the Differential Quant admin shell.</p>
+      <p className="mt-1 text-[13px] text-[#71717a]">Part of the A-Level Hub admin shell.</p>
 
       <section className="mt-6 max-w-2xl rounded-xl border border-[#e4e4e7] bg-white p-8">
         <span className="grid h-11 w-11 place-items-center rounded-lg border border-[#e4e4e7] bg-[#fafafa]">

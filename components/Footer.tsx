@@ -15,11 +15,11 @@ export function Footer() {
               height={36}
               className="h-9 w-9 rounded-lg object-cover transition-transform duration-300 group-hover:-rotate-3 group-hover:scale-105"
             />
-            <span className="font-display text-[20px]">Differential Quant</span>
+            <span className="font-display text-[20px]">A-Level Hub</span>
           </Link>
           <p className="mt-4 text-[13px] leading-relaxed text-muted">
-            Past papers, an AI tutor grounded in the course material, and human tutors when you
-            want a person — with the sources shown.
+            CIE AS &amp; A Level past papers, an AI tutor grounded in the course material, and human
+            tutors when you want a person — the whole syllabus broken into small, solvable pieces.
           </p>
         </div>
 
@@ -55,7 +55,7 @@ export function Footer() {
       </div>
       <div className="border-t border-line/70">
         <div className="container-page flex flex-col gap-2 py-5 text-[11.5px] text-muted sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} Differential Quant. Built with Next.js, Supabase and RAGFlow.</p>
+          <p>© {new Date().getFullYear()} A-Level Hub. Built with Next.js, Supabase and RAGFlow.</p>
           <p>Answers are generated from your knowledge base. Always check the cited source.</p>
         </div>
       </div>

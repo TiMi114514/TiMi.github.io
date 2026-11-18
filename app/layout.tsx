@@ -21,9 +21,9 @@ const display = Source_Serif_4({
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
 export const metadata: Metadata = {
-  title: 'Differential Quant — Past papers, AI and human tutors',
+  title: 'A-Level Hub — CIE past papers, AI and human tutors',
   description:
-    'Past papers plus an AI tutor grounded in your course material and human tutors on demand — with the sources shown.',
+    'CIE AS & A Level past papers, an AI tutor grounded in your course material, and human tutors on demand — the whole syllabus broken into small, solvable pieces.',
   icons: {
     icon: `${basePath}/favicon.png`,
     apple: `${basePath}/apple-touch-icon.png`,

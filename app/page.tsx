@@ -84,18 +84,20 @@ export default function HomePage() {
         <section className="container-page pb-16 pt-14 sm:pt-20 lg:pb-20">
           <div className="grid items-center gap-12 lg:grid-cols-[1.12fr_0.88fr]">
             <div className="animate-fade-up">
-              <p className="eyebrow">Past papers · AI + human tutors</p>
+              <p className="eyebrow">Cambridge International (CIE) · AS &amp; A Level</p>
               <h1 className="mt-5 font-display text-[clamp(38px,8.2vw,64px)] leading-[0.98] tracking-[-0.02em]">
-                Every past paper.
+                The whole A-Level,
                 <br />
-                Every question
+                <em className="italic">differentiated</em> into
                 <br />
-                <em className="italic">answered.</em>
+                solvable pieces.
               </h1>
-              <p className="mt-7 max-w-[480px] text-[14.5px] leading-relaxed text-muted">
-                Maths, sciences, economics, law and professional subjects — one archive. Download
-                the papers, ask the AI tutor about anything you get stuck on, or book a human tutor
-                when you want a person. Answers come with the source shown.
+              <p className="mt-7 max-w-[490px] text-[14.5px] leading-relaxed text-muted">
+                Built for Cambridge International (CIE) AS &amp; A Level — Maths, sciences,
+                Economics and more. A whole syllabus looks impossible, so we do what calculus does:
+                break the huge problem into small, solvable pieces. One paper, one question, one
+                mark-scheme line at a time. Download it, ask the AI tutor about the piece
+                you&apos;re stuck on, or bring in a human tutor. Every answer shows its source.
               </p>
 
               <div className="mt-8 flex flex-wrap items-center gap-3">

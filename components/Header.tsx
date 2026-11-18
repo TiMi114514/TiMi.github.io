@@ -35,7 +35,7 @@ export function Header() {
         <Link
           href="/"
           className="group flex items-center gap-2.5"
-          aria-label="Differential Quant home"
+          aria-label="A-Level Hub home"
         >
           <img
             src={`${basePath}/brand-mark.png`}
@@ -45,7 +45,7 @@ export function Header() {
             className="h-9 w-9 rounded-lg object-cover transition-transform duration-300 group-hover:-rotate-3 group-hover:scale-105"
           />
           <span className="hidden whitespace-nowrap font-display text-[17px] tracking-[-0.01em] transition-colors group-hover:text-[#2b2921] min-[420px]:inline sm:text-[20px]">
-            Differential Quant
+            A-Level Hub
           </span>
         </Link>
 

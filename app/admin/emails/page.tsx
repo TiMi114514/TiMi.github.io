@@ -32,30 +32,30 @@ const templates = [
   {
     id: 'approved',
     label: 'Teacher approved',
-    subject: 'Your Differential Quant tutor application',
+    subject: 'Your A-Level Hub tutor application',
     body: (name: string) =>
-      `Hi ${name || 'there'},\n\nThank you for applying to tutor with Differential Quant. Your application has been approved.\n\nYou can now sign in with this email address and open the Human tutor area. We will contact you when a student requests a session in your subjects.\n\nBest,\nDifferential Quant`,
+      `Hi ${name || 'there'},\n\nThank you for applying to tutor with A-Level Hub. Your application has been approved.\n\nYou can now sign in with this email address and open the Human tutor area. We will contact you when a student requests a session in your subjects.\n\nBest,\nA-Level Hub`,
   },
   {
     id: 'rejected',
     label: 'Teacher not accepted',
-    subject: 'Your Differential Quant tutor application',
+    subject: 'Your A-Level Hub tutor application',
     body: (name: string) =>
-      `Hi ${name || 'there'},\n\nThank you for taking the time to apply to tutor with Differential Quant. We are not able to approve your application at this time.\n\nYou are still welcome to use the archive and the AI tutor with this account.\n\nBest,\nDifferential Quant`,
+      `Hi ${name || 'there'},\n\nThank you for taking the time to apply to tutor with A-Level Hub. We are not able to approve your application at this time.\n\nYou are still welcome to use the archive and the AI tutor with this account.\n\nBest,\nA-Level Hub`,
   },
   {
     id: 'request',
     label: 'Human tutor reply',
-    subject: 'Your Differential Quant tutor request',
+    subject: 'Your A-Level Hub tutor request',
     body: (name: string) =>
-      `Hi ${name || 'there'},\n\nThanks for your tutor request. I have read the question you sent and can help with it.\n\nWhen would be a good time for a short session? Reply with two or three times that work for you and I will confirm one.\n\nBest,\nDifferential Quant`,
+      `Hi ${name || 'there'},\n\nThanks for your tutor request. I have read the question you sent and can help with it.\n\nWhen would be a good time for a short session? Reply with two or three times that work for you and I will confirm one.\n\nBest,\nA-Level Hub`,
   },
   {
     id: 'verify',
     label: 'Verification reminder',
-    subject: 'Please verify your Differential Quant email',
+    subject: 'Please verify your A-Level Hub email',
     body: (name: string) =>
-      `Hi ${name || 'there'},\n\nYour Differential Quant account is almost ready. Please open the verification email and confirm this address so the AI tutor unlocks.\n\nIf the link has expired, sign in and request a new verification email.\n\nBest,\nDifferential Quant`,
+      `Hi ${name || 'there'},\n\nYour A-Level Hub account is almost ready. Please open the verification email and confirm this address so the AI tutor unlocks.\n\nIf the link has expired, sign in and request a new verification email.\n\nBest,\nA-Level Hub`,
   },
 ] as const;
 

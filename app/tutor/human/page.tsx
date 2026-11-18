@@ -157,7 +157,7 @@ export default function HumanTutorPage() {
                 <div>
                   <p className="text-[13.5px] font-medium">Verified teachers</p>
                   <p className="mt-0.5 max-w-[320px] text-[12.5px] leading-relaxed text-muted">
-                    Teachers apply when they sign up and are reviewed by the Differential Quant
+                    Teachers apply when they sign up and are reviewed by the A-Level Hub
                     team before they take students.
                   </p>
                 </div>

@@ -201,7 +201,7 @@ export default function SignupPage() {
               <span>
                 <span className="block text-[13px] text-ink">Apply to become a teacher</span>
                 <span className="mt-0.5 block text-[11.5px] leading-relaxed text-muted">
-                  Optional — reviewed by the Differential Quant team. Approved teachers can take
+                  Optional — reviewed by the A-Level Hub team. Approved teachers can take
                   human tutor sessions.
                 </span>
               </span>
