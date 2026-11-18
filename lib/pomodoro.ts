@@ -23,6 +23,9 @@ export function formatClock(totalSeconds: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`;
 }
 
-export function formatTime(date: Date): string {
-  return date.toLocaleTimeString('en-GB', { hour12: false });
+export function formatTime(date: Date, timeZone?: string): string {
+  return date.toLocaleTimeString(
+    'en-GB',
+    timeZone ? { hour12: false, timeZone } : { hour12: false },
+  );
 }

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Clock, Maximize2, Pause, Play, RotateCcw } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import { LocalTime } from '@/components/LocalTime';
 import { usePomodoro } from '@/components/PomodoroProvider';
 import { formatClock } from '@/lib/pomodoro';
 
@@ -48,7 +49,8 @@ export default function PomodoroPage() {
           </h1>
           <p className="mt-4 max-w-[520px] text-[14px] leading-relaxed text-muted">
             A simple Pomodoro timer: a focused block, a short break, repeat. It keeps running while
-            you move between pages, and the focus screen is pure black with just the clock.
+            you move between pages, and the focus screen is pure black with just the clock — shown
+            in your local time, matched from your IP address.
           </p>
 
           <section className="mt-9 overflow-hidden rounded-2xl border border-line bg-paper shadow-card">
@@ -110,6 +112,8 @@ export default function PomodoroPage() {
               </div>
             </div>
           </section>
+
+          <LocalTime />
 
           <section className="mt-5 rounded-2xl border border-line bg-paper p-5 sm:p-7">
             <div className="flex flex-wrap items-end justify-between gap-3">

@@ -11,6 +11,7 @@ import {
   formatTime,
   type PomodoroMode,
 } from '@/lib/pomodoro';
+import { resolveGeoZone, zoneLabel, type GeoZone } from '@/lib/geo-time';
 
 const STORAGE_KEY = 'differential-quant.pomodoro.v1';
 
@@ -30,6 +31,7 @@ type PomodoroContextValue = {
   running: boolean;
   focusScreen: boolean;
   now: number;
+  zone: GeoZone | null;
   start: () => void;
   pause: () => void;
   reset: () => void;
@@ -83,6 +85,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
   const [running, setRunning] = useState(false);
   const [focusScreen, setFocusScreen] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const [zone, setZone] = useState<GeoZone | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const overlayRef = useRef<HTMLDivElement | null>(null);
 
@@ -105,6 +108,16 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
       }
     }
     setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    resolveGeoZone().then((resolved) => {
+      if (alive) setZone(resolved);
+    });
+    return () => {
+      alive = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -207,6 +220,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     running,
     focusScreen,
     now,
+    zone,
     start,
     pause,
     reset,
@@ -238,10 +252,15 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
             {mode === 'focus' ? 'Focus' : 'Break'}
           </p>
           <p className="mt-5 font-display text-[clamp(64px,13vw,170px)] leading-none tabular-nums">
-            {formatTime(new Date(now))}
+            {formatTime(new Date(now), zone?.timeZone)}
           </p>
           <p className="mt-6 font-display text-[clamp(26px,4.6vw,52px)] text-white/60 tabular-nums">
             {formatClock(remaining)} remaining
+          </p>
+          <p className="mt-4 text-[11px] uppercase tracking-[0.24em] text-white/35">
+            {zone
+              ? `${zoneLabel(zone)} · ${zone.source === 'ip' ? 'from your IP' : 'device timezone'}`
+              : 'Local time'}
           </p>
 
           <div className="mt-10 flex items-center gap-3">
