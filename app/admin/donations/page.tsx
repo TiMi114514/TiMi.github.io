@@ -33,6 +33,8 @@ type AdminDonation = {
   currency: Currency | null;
   method: string | null;
   message: string | null;
+  message_status: 'pending' | 'approved' | 'rejected';
+  message_reviewed_by: string | null;
   reference: string | null;
   status: 'pending' | 'confirmed' | 'rejected' | 'hidden';
   ip: string | null;
@@ -43,7 +45,7 @@ type AdminDonation = {
   reviewed_by: string | null;
 };
 
-type Result = { items: AdminDonation[]; total: number; pending: number };
+type Result = { items: AdminDonation[]; total: number; pending: number; pending_messages: number };
 
 async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
   if (!supabase) throw new Error('Supabase is not configured.');
@@ -97,8 +99,7 @@ function QrUploader({ method, label }: { method: 'wechat' | 'alipay'; label: str
 }
 
 export default function AdminDonationsPage() {
-  const [status, setStatus] = useState<'all' | AdminDonation['status']>('pending');
-  const [kind, setKind] = useState<'all' | 'donation' | 'message'>('all');
+  const [status, setStatus] = useState<'all' | 'messages' | AdminDonation['status']>('pending');
   const [query, setQuery] = useState('');
   const { data, error, loading, reload } = useAdminData(
     () => rpc<Result>('admin_donations', { p_status: status === 'all' ? null : status, p_limit: 500 }),
@@ -109,12 +110,11 @@ export default function AdminDonationsPage() {
   const items = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return (data?.items ?? []).filter((row) => {
-      if (kind !== 'all' && row.kind !== kind) return false;
       if (!needle) return true;
       return [row.public_id, row.display_name, row.email, row.message, row.reference, row.ip]
         .some((value) => (value ?? '').toLowerCase().includes(needle));
     });
-  }, [data, kind, query]);
+  }, [data, query]);
 
   const confirmed = items.filter((row) => row.kind === 'donation' && row.status === 'confirmed');
   const sum = (cur: Currency) => confirmed.filter((row) => row.currency === cur).reduce((s, row) => s + Number(row.amount ?? 0), 0);
@@ -128,11 +128,20 @@ export default function AdminDonationsPage() {
     }
   }
 
+  async function reviewMessage(row: AdminDonation, next: AdminDonation['message_status']) {
+    try {
+      await rpc('admin_donation_message_review', { p_id: row.id, p_status: next });
+      await reload();
+    } catch (caught) {
+      window.alert(caught instanceof Error ? caught.message : 'Update failed.');
+    }
+  }
+
   function exportCsv() {
     downloadCsv(
       `donations-${new Date().toISOString().slice(0, 10)}.csv`,
-      ['ID', 'Type', 'Status', 'Name', 'Anonymous', 'Email', 'Amount', 'Currency', 'Method', 'Reference', 'Message', 'IP', 'Submitted', 'Reviewed by'],
-      items.map((row) => [row.public_id, row.kind, row.status, row.display_name, row.anonymous ? 'yes' : 'no', row.email, row.amount, row.currency, row.method, row.reference, row.message, row.ip, row.created_at, row.reviewed_by]),
+      ['ID', 'Payment status', 'Name', 'Anonymous', 'Email', 'Amount', 'Currency', 'Method', 'Reference', 'Message', 'Message status', 'IP', 'Submitted', 'Reviewed by'],
+      items.map((row) => [row.public_id, row.status, row.display_name, row.anonymous ? 'yes' : 'no', row.email, row.amount, row.currency, row.method, row.reference, row.message, row.message ? row.message_status : '', row.ip, row.created_at, row.reviewed_by]),
     );
   }
 
@@ -140,7 +149,7 @@ export default function AdminDonationsPage() {
     <div>
       <PageHeader
         title="Donations"
-        description="Donors pay with the QR codes on /donate and then submit the form. Check the payment in WeChat / Alipay, then confirm it here — only confirmed gifts are shown publicly and counted in the top 3. Messages are published immediately; hide any you don't want on the wall."
+        description="Donors pay with the QR codes on /donate and then submit the form. Check the payment in WeChat / Alipay and confirm it — only confirmed gifts are shown publicly and counted in the top 3. Every message is held back until you approve it, separately from the payment."
         actions={
           <>
             <Button onClick={exportCsv} disabled={items.length === 0}>
@@ -153,7 +162,7 @@ export default function AdminDonationsPage() {
 
       <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Waiting for review" value={data?.pending ?? '—'} tone={data?.pending ? 'amber' : 'default'} />
-        <StatCard label="Shown" value={data ? items.length : '—'} hint={status === 'all' ? 'all statuses' : status} />
+        <StatCard label="Messages to review" value={data?.pending_messages ?? '—'} tone={data?.pending_messages ? 'amber' : 'default'} />
         <StatCard label="Confirmed CNY (shown)" value={data ? formatMoney(sum('CNY'), 'CNY', 'en-US') : '—'} tone="green" />
         <StatCard label="Confirmed USD (shown)" value={data ? formatMoney(sum('USD'), 'USD', 'en-US') : '—'} tone="green" />
       </div>
@@ -167,22 +176,17 @@ export default function AdminDonationsPage() {
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <div className="inline-flex rounded-lg border border-[#e4e4e7] bg-white p-0.5">
-          {(['pending', 'confirmed', 'rejected', 'hidden', 'all'] as const).map((value) => (
+          {(['pending', 'messages', 'confirmed', 'rejected', 'hidden', 'all'] as const).map((value) => (
             <button
               key={value}
               type="button"
               onClick={() => setStatus(value)}
               className={`rounded-md px-3 py-1.5 text-[12px] capitalize ${status === value ? 'bg-[#18181b] text-white' : 'text-[#52525b] hover:bg-[#f4f4f5]'}`}
             >
-              {value}
+              {value === 'pending' ? 'payments to confirm' : value === 'messages' ? `messages to review${data?.pending_messages ? ` (${data.pending_messages})` : ''}` : value}
             </button>
           ))}
         </div>
-        <select value={kind} onChange={(e) => setKind(e.target.value as typeof kind)} className={`${inputClass} w-auto`}>
-          <option value="all">Donations and messages</option>
-          <option value="donation">Donations</option>
-          <option value="message">Messages only</option>
-        </select>
         <div className="relative min-w-[220px] flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#a1a1aa]" />
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search id, name, email, reference, message, IP" className={`${inputClass} pl-9`} />
@@ -201,11 +205,11 @@ export default function AdminDonationsPage() {
             <table className="w-full min-w-[1040px] text-left text-[12px]">
               <thead className="border-b border-[#e4e4e7] bg-[#fafafa] text-[11px] uppercase tracking-[0.04em] text-[#71717a]">
                 <tr>
-                  <th className="px-4 py-2.5 font-medium">ID / status</th>
+                  <th className="px-4 py-2.5 font-medium">ID / payment</th>
                   <th className="px-4 py-2.5 font-medium">From</th>
                   <th className="px-4 py-2.5 font-medium">Amount</th>
                   <th className="px-4 py-2.5 font-medium">Reference</th>
-                  <th className="px-4 py-2.5 font-medium">Message</th>
+                  <th className="px-4 py-2.5 font-medium">Message (moderated)</th>
                   <th className="px-4 py-2.5 font-medium">IP / device</th>
                   <th className="px-4 py-2.5 font-medium">Submitted</th>
                   <th className="px-4 py-2.5 text-right font-medium">Actions</th>
@@ -220,7 +224,6 @@ export default function AdminDonationsPage() {
                         <p className="font-mono text-[11.5px] font-medium">#{row.public_id}</p>
                         <div className="mt-1 flex flex-wrap gap-1">
                           <Badge tone={statusTone(row.status === 'confirmed' ? 'active' : row.status === 'hidden' ? 'disabled' : row.status)}>{row.status}</Badge>
-                          {row.kind === 'message' ? <Badge tone="blue">message</Badge> : null}
                         </div>
                       </td>
                       <td className="max-w-[200px] px-4 py-2.5">
@@ -239,10 +242,44 @@ export default function AdminDonationsPage() {
                         )}
                       </td>
                       <td className="px-4 py-2.5 font-mono text-[11px]">{row.reference || '—'}</td>
-                      <td className="max-w-[280px] px-4 py-2.5">
-                        <p className="line-clamp-3 whitespace-pre-wrap break-words text-[11.5px]" title={row.message ?? ''}>
-                          {row.message || '—'}
-                        </p>
+                      <td className="max-w-[300px] px-4 py-2.5">
+                        {row.message ? (
+                          <div className="space-y-1.5">
+                            <p className="line-clamp-4 whitespace-pre-wrap break-words text-[11.5px]" title={row.message}>
+                              {row.message}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-1">
+                              <Badge tone={row.message_status === 'approved' ? 'green' : row.message_status === 'rejected' ? 'red' : 'amber'}>
+                                message {row.message_status}
+                              </Badge>
+                              {row.message_status !== 'approved' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => void reviewMessage(row, 'approved')}
+                                  className="inline-flex items-center gap-1 rounded-md border border-[#bbf7d0] bg-[#f0fdf4] px-1.5 py-0.5 text-[10.5px] text-[#15803d] hover:bg-[#dcfce7]"
+                                  title="Publish this message on the donate wall"
+                                >
+                                  <Check className="h-3 w-3" /> Approve
+                                </button>
+                              ) : null}
+                              {row.message_status !== 'rejected' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => void reviewMessage(row, 'rejected')}
+                                  className="inline-flex items-center gap-1 rounded-md border border-[#fecaca] bg-[#fef2f2] px-1.5 py-0.5 text-[10.5px] text-[#b91c1c] hover:bg-[#fee2e2]"
+                                  title="Never show this message"
+                                >
+                                  <X className="h-3 w-3" /> Reject
+                                </button>
+                              ) : null}
+                            </div>
+                            {row.message_reviewed_by ? (
+                              <p className="text-[10px] text-[#a1a1aa]">by {row.message_reviewed_by}</p>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <span className="text-[#a1a1aa]">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-2.5">
                         <p className="font-mono text-[11px]">{row.ip || '—'}</p>
@@ -255,11 +292,11 @@ export default function AdminDonationsPage() {
                       <td className="whitespace-nowrap px-4 py-2.5 text-right">
                         <div className="inline-flex gap-1">
                           {row.status !== 'confirmed' ? (
-                            <Button onClick={() => void review(row, 'confirmed')} title={row.kind === 'message' ? 'Show on wall' : 'Payment received'}>
-                              <Check className="h-3.5 w-3.5 text-[#15803d]" /> {row.kind === 'message' ? 'Show' : 'Confirm'}
+                            <Button onClick={() => void review(row, 'confirmed')} title="Payment received">
+                              <Check className="h-3.5 w-3.5 text-[#15803d]" /> Confirm
                             </Button>
                           ) : null}
-                          {row.kind === 'donation' && row.status === 'pending' ? (
+                          {row.status === 'pending' ? (
                             <Button variant="danger" onClick={() => void review(row, 'rejected')} title="Payment not found">
                               <X className="h-3.5 w-3.5" /> Reject
                             </Button>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Crown, Heart, MessageCircle, QrCode, RefreshCw } from 'lucide-react';
+import { Crown, Heart, QrCode, RefreshCw } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { useAuth } from '@/components/AuthProvider';
@@ -48,7 +48,6 @@ export default function DonatePage() {
   const [wallError, setWallError] = useState<string | null>(null);
   const [loadingWall, setLoadingWall] = useState(false);
 
-  const [kind, setKind] = useState<'donation' | 'message'>('donation');
   const [currency, setCurrency] = useState<Currency>('CNY');
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState<PayMethod>('wechat');
@@ -91,26 +90,24 @@ export default function DonatePage() {
     setError(null);
     setDone(null);
     const value = Number(amount);
-    if (kind === 'donation' && !(value > 0)) return setError(t('donate.errAmount'));
-    if (kind === 'message' && !message.trim()) return setError(t('donate.errMessage'));
+    if (!(value > 0)) return setError(t('donate.errAmount'));
     setBusy(true);
     try {
       const result = await submitDonation({
-        kind,
+        kind: 'donation',
         name: name.trim(),
         anonymous,
-        amount: kind === 'donation' ? value : null,
-        currency: kind === 'donation' ? currency : null,
-        method: kind === 'donation' ? method : null,
+        amount: value,
+        currency,
+        method,
         message: message.trim(),
         reference: reference.trim(),
         visitor: getVisitorId(),
       });
-      setDone(kind === 'donation' ? t('donate.thanksDonation', { id: result.public_id }) : t('donate.thanksMessage', { id: result.public_id }));
+      setDone(t('donate.thanksDonation', { id: result.public_id }));
       setAmount('');
       setMessage('');
       setReference('');
-      if (kind === 'message') void load();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Failed.');
     } finally {
@@ -203,25 +200,7 @@ export default function DonatePage() {
             {/* Form */}
             <form onSubmit={submit} className="rounded-2xl border border-line bg-paper p-5 sm:p-7">
               <h2 className="font-display text-[22px] leading-none">{t('donate.formTitle')}</h2>
-              <div className="mt-4 inline-flex rounded-full border border-line bg-cream/60 p-1">
-                {(['donation', 'message'] as const).map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => {
-                      setKind(value);
-                      setError(null);
-                    }}
-                    className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] transition-colors ${kind === value ? 'bg-ink text-cream' : 'text-muted hover:text-ink'}`}
-                  >
-                    {value === 'donation' ? <Heart className="h-3.5 w-3.5" /> : <MessageCircle className="h-3.5 w-3.5" />}
-                    {value === 'donation' ? t('donate.tabDonation') : t('donate.tabMessage')}
-                  </button>
-                ))}
-              </div>
-
               <div className="mt-5 space-y-4">
-                {kind === 'donation' ? (
                   <>
                     <div className="grid gap-3 sm:grid-cols-[1fr_120px]">
                       <label className="block space-y-1.5 text-[12.5px] text-muted">
@@ -275,7 +254,6 @@ export default function DonatePage() {
                       </label>
                     </div>
                   </>
-                ) : null}
 
                 <label className="block space-y-1.5 text-[12.5px] text-muted">
                   <span>{t('donate.name')}</span>
@@ -291,24 +269,26 @@ export default function DonatePage() {
                 </label>
 
                 <label className="block space-y-1.5 text-[12.5px] text-muted">
-                  <span>{kind === 'message' ? t('donate.messageRequired') : t('donate.message')}</span>
+                  <span>{t('donate.message')}</span>
                   <textarea
                     rows={3}
                     maxLength={300}
                     value={message}
-                    required={kind === 'message'}
                     onChange={(e) => setMessage(e.target.value)}
                     className="input resize-y"
                     placeholder={t('donate.messagePh')}
                   />
-                  <span className="block text-right text-[10.5px] text-muted/80">{message.length}/300</span>
+                  <span className="flex justify-between gap-3 text-[10.5px] text-muted/80">
+                    <span>{t('donate.messageModerated')}</span>
+                    <span>{message.length}/300</span>
+                  </span>
                 </label>
 
                 {error ? <p className="rounded-xl border border-[#e7c9c1] bg-[#fbeeea] px-3 py-2 text-[12.5px] text-[#8a3b2a]">{error}</p> : null}
                 {done ? <p className="rounded-xl border border-[#cfe1d4] bg-[#eef5ef] px-3 py-2 text-[12.5px] text-[#3f7d5a]">{done}</p> : null}
 
                 <button type="submit" disabled={busy} className="btn-dark w-full py-3">
-                  {kind === 'donation' ? <Heart className="h-4 w-4" aria-hidden /> : <MessageCircle className="h-4 w-4" aria-hidden />}
+                  <Heart className="h-4 w-4" aria-hidden />
                   {busy ? t('donate.submitting') : t('donate.submit')}
                 </button>
               </div>
@@ -336,8 +316,8 @@ export default function DonatePage() {
               <ul className="mt-5 divide-y divide-line/70">
                 {(wall?.recent ?? []).map((entry) => (
                   <li key={entry.id} className="flex gap-3 py-3.5">
-                    <span className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full ${entry.kind === 'donation' ? 'bg-[#fbe4dc] text-[#b4543f]' : 'bg-soft text-muted'}`}>
-                      {entry.kind === 'donation' ? <Heart className="h-4 w-4" /> : <MessageCircle className="h-4 w-4" />}
+                    <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#fbe4dc] text-[#b4543f]">
+                      <Heart className="h-4 w-4" />
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="flex flex-wrap items-baseline gap-x-2 text-[13.5px]">
