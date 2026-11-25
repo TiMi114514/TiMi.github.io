@@ -208,7 +208,116 @@ async function refreshCatalogue() {
 }
 
 async function ensureCatalogue() {
-  if (Date.now() - catalogue.loadedAt > 5 * 60_000) await refreshCatalogue();
+  const maxAge = catalogue.error || catalogue.datasets.size === 0 ? 15_000 : 5 * 60_000;
+  if (Date.now() - catalogue.loadedAt > maxAge) await refreshCatalogue();
+}
+
+// ---------------------------------------------------------------- filename index (fast search)
+//
+// RAGFlow has no cross-dataset filename search, so the browser used to fan out
+// dozens of paged requests over the internet. The gateway keeps every document
+// name in memory (≈5k rows, <1 MB) and answers searches in a single round trip.
+
+const PAPER_RE = /(\d{4})[_\-\s]?([smw])(\d{2})[_\-\s]?([a-z]{2,3})(?:[_\-\s]?(\d{1,2}))?/i;
+const SEASON_ORDER = { m: 1, s: 2, w: 3 };
+const index = { docs: [], builtAt: 0, building: null, error: null };
+
+function parseName(name) {
+  const base = (name.split('/').pop() || name).toLowerCase();
+  const m = PAPER_RE.exec(base);
+  if (!m) return { base, year: null, season: null, type: null, code: null };
+  return { base, code: m[1], season: m[2].toLowerCase(), year: 2000 + Number(m[3]), type: m[4].toLowerCase() };
+}
+
+async function buildIndex() {
+  await ensureCatalogue();
+  // Never publish an empty or partial index: RAGFlow may still be booting.
+  if (catalogue.error || catalogue.datasets.size === 0) throw new Error(catalogue.error || 'no datasets yet');
+  const docs = [];
+  await Promise.all(
+    [...catalogue.datasets.values()].map(async (ds) => {
+      const pages = Math.max(1, Math.ceil((ds.document_count || 0) / 100));
+      const results = await Promise.all(
+        Array.from({ length: Math.min(pages, 200) }, (_, i) =>
+          upstreamJson(`/api/v1/datasets/${ds.id}/documents?page=${i + 1}&page_size=100`),
+        ),
+      );
+      const seen = new Set();
+      for (const data of results) {
+        for (const doc of data?.docs ?? []) {
+          if (!doc?.id || seen.has(doc.id)) continue;
+          seen.add(doc.id);
+          docs.push({ id: doc.id, name: doc.name, size: doc.size, dataset_id: ds.id, dataset_name: ds.name, create_time: doc.create_time, ...parseName(doc.name) });
+        }
+      }
+    }),
+  );
+  index.docs = docs;
+  index.builtAt = Date.now();
+  index.error = null;
+  log({ event: 'index_built', docs: docs.length });
+}
+
+async function ensureIndex() {
+  const stale = Date.now() - index.builtAt > 10 * 60_000;
+  if (!stale) return;
+  if (!index.building) {
+    index.building = buildIndex()
+      .catch((error) => {
+        index.error = error.message;
+        log({ event: 'index_error', message: error.message });
+      })
+      .finally(() => (index.building = null));
+  }
+  // First build: wait for it. Later refreshes: serve the old index meanwhile.
+  if (index.builtAt === 0) await index.building;
+}
+
+function searchIndex(params) {
+  const q = (params.get('q') || '').trim().toLowerCase().slice(0, 80);
+  const dataset = params.get('dataset') || '';
+  const year = int(params.get('year'), 0);
+  const season = (params.get('season') || '').toLowerCase();
+  const type = (params.get('type') || '').toLowerCase();
+  const limit = Math.min(Math.max(int(params.get('limit'), 1000), 1), 1000);
+  let docs = index.docs;
+
+  let series = null;
+  if (params.get('series') === 'latest') {
+    // Most recent exam series present in the archive, e.g. 2026 June (s26).
+    let best = 0;
+    for (const d of docs) {
+      if (!d.year || !d.season) continue;
+      const rank = d.year * 10 + SEASON_ORDER[d.season];
+      if (rank > best) best = rank;
+    }
+    if (best) {
+      const y = Math.floor(best / 10);
+      const s = Object.keys(SEASON_ORDER).find((k) => SEASON_ORDER[k] === best % 10);
+      series = { year: y, season: s };
+      docs = docs.filter((d) => d.year === y && d.season === s);
+    }
+  }
+
+  docs = docs.filter(
+    (d) =>
+      (!dataset || d.dataset_id === dataset) &&
+      (!year || d.year === year) &&
+      (!season || d.season === season) &&
+      (!type || d.type === type) &&
+      (!q || d.base.includes(q)),
+  );
+  const total = docs.length;
+  const sorted =
+    params.get('sort') === 'recent'
+      ? [...docs].sort((a, b) => (b.create_time || 0) - (a.create_time || 0))
+      : [...docs].sort((a, b) => a.dataset_name.localeCompare(b.dataset_name) || a.base.localeCompare(b.base, undefined, { numeric: true }));
+  return {
+    total,
+    series,
+    index_age_s: Math.round((Date.now() - index.builtAt) / 1000),
+    docs: sorted.slice(0, limit).map((d) => ({ id: d.id, name: d.name, size: d.size, dataset_id: d.dataset_id, dataset_name: d.dataset_name })),
+  };
 }
 
 // ---------------------------------------------------------------- logging
@@ -442,6 +551,15 @@ async function handle(req, res, ctx) {
     return send(res, ctx, 200, { code: 0, data: [...catalogue.datasets.values()].map(pickDataset) });
   }
 
+  // GET /api/v1/search — one-shot filename search over every allowed dataset
+  if (req.method === 'GET' && p === '/api/v1/search') {
+    ctx.route = 'search';
+    if (!limit(res, ctx, `read:${ctx.ip}`, CFG.limits.ipRead)) return;
+    await ensureIndex();
+    if (index.builtAt === 0) return fail(res, ctx, 502, 'Search index is not ready.');
+    return send(res, ctx, 200, { code: 0, data: searchIndex(url.searchParams) }, { 'Cache-Control': 'public, max-age=60' });
+  }
+
   // GET /api/v1/datasets/:ds/documents
   if (req.method === 'GET' && (m = /^\/api\/v1\/datasets\/([a-f0-9]{32})\/documents$/.exec(p))) {
     ctx.route = 'documents.list';
@@ -601,6 +719,17 @@ server.keepAliveTimeout = 5_000;
 
 server.listen(CFG.port, CFG.host, async () => {
   await refreshCatalogue();
+  // RAGFlow takes ~3 minutes to boot after a restart; keep retrying instead of
+  // serving an empty catalogue for 5 minutes.
+  const retry = setInterval(async () => {
+    if (!catalogue.error && catalogue.datasets.size > 0) {
+      clearInterval(retry);
+      void ensureIndex();
+      return;
+    }
+    await refreshCatalogue();
+  }, 15_000);
+  if (!catalogue.error) void ensureIndex();
   console.log(
     `[gateway] listening on http://${CFG.host}:${CFG.port} → ${CFG.upstream} | assistants=${catalogue.chats.size} datasets=${catalogue.datasets.size}${catalogue.error ? ` | upstream error: ${catalogue.error}` : ''}`,
   );

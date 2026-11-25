@@ -671,6 +671,67 @@ function mapDocument(doc: RagflowDocument, dataset: { id: string; name: string }
 }
 
 /**
+ * Papers from the most recent exam series in the archive (e.g. 2026 May/June),
+ * newest uploads first. Uses the gateway's in-memory index: one request, no
+ * dataset traversal. Returns null when the gateway search is unavailable.
+ */
+export type LatestSeries = { year: number; season: 'm' | 's' | 'w'; total: number; papers: Paper[] };
+
+const LATEST_CACHE_KEY = 'differential-quant.archive.latest.v1';
+const LATEST_CACHE_TTL = 15 * 60 * 1000;
+
+export async function fetchLatestSeries(limit = 24): Promise<LatestSeries | null> {
+  const cfg = getRagflowConfig();
+  if (!reachable(cfg)) return null;
+
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = window.sessionStorage.getItem(LATEST_CACHE_KEY);
+      if (raw) {
+        const cached = JSON.parse(raw) as { ts: number; data: LatestSeries };
+        if (Date.now() - cached.ts < LATEST_CACHE_TTL && cached.data?.papers?.length) return cached.data;
+      }
+    } catch {
+      /* ignore cache */
+    }
+  }
+
+  try {
+    const res = await fetch(`${cfg.baseUrl}/api/v1/search?series=latest&limit=${limit}`, {
+      headers: authHeaders(cfg),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as {
+      code?: number;
+      data?: {
+        total: number;
+        series: { year: number; season: 'm' | 's' | 'w' } | null;
+        docs: { id: string; name: string; size?: number; dataset_id: string; dataset_name: string }[];
+      };
+    };
+    const data = json?.data;
+    if (json?.code !== 0 || !data?.series || !data.docs.length) return null;
+    const result: LatestSeries = {
+      year: data.series.year,
+      season: data.series.season,
+      total: data.total,
+      papers: data.docs.map((doc) => mapDocument(doc, { id: doc.dataset_id, name: doc.dataset_name })),
+    };
+    if (typeof window !== 'undefined') {
+      try {
+        window.sessionStorage.setItem(LATEST_CACHE_KEY, JSON.stringify({ ts: Date.now(), data: result }));
+      } catch {
+        /* storage may be unavailable */
+      }
+    }
+    return result;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Lightweight archive preview: the first documents of a few datasets, enough
  * for large cards without reading the whole knowledge base.
  */

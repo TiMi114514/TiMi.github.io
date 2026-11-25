@@ -15,8 +15,8 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { HeroPapers } from '@/components/HeroPapers';
 import { HomeStats } from '@/components/HomeStats';
-import { PaperCard } from '@/components/PaperCard';
-import { samplePapers } from '@/lib/papers';
+import { LatestPapersCarousel } from '@/components/LatestPapersCarousel';
+import { RecentExams } from '@/components/RecentExams';
 import { useT, type MessageKey } from '@/lib/i18n';
 
 function renderTemplate(template: string, slots: Record<string, ReactNode>): ReactNode {
@@ -71,7 +71,6 @@ const tutorFeatures: { icon: typeof BookOpen; title: MessageKey; body: MessageKe
 
 export default function HomePage() {
   const t = useT();
-  const featured = samplePapers.slice(0, 3);
 
   return (
     <div>
@@ -126,41 +125,9 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Archive preview */}
-        <section className="border-t border-line/60">
-          <div className="container-page py-16 sm:py-20">
-            <div className="flex items-end justify-between gap-6">
-              <div>
-                <p className="eyebrow">{t('home.archiveEyebrow')}</p>
-                <h2 className="mt-3 font-display text-[38px] leading-none tracking-[-0.01em] sm:text-[44px]">
-                  {t('home.recent')}
-                </h2>
-              </div>
-              <Link
-                href="/papers"
-                className="hidden items-center gap-1.5 text-[13px] text-muted transition-colors hover:text-ink sm:flex"
-              >
-                {t('home.allPapers')} <ArrowRight className="h-4 w-4" aria-hidden />
-              </Link>
-            </div>
+        <RecentExams />
 
-            <div className="mt-10 grid gap-5 md:grid-cols-3">
-              {featured.map((paper) => (
-                <PaperCard key={paper.id} paper={paper} />
-              ))}
-            </div>
-
-            <div className="mt-6 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
-              <p className="text-[12px] text-muted">{t('home.sampleNote')}</p>
-              <Link
-                href="/papers"
-                className="flex items-center gap-1.5 text-[12.5px] text-muted transition-colors hover:text-ink sm:hidden"
-              >
-                {t('home.allPapers')} <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-              </Link>
-            </div>
-          </div>
-        </section>
+        <LatestPapersCarousel />
 
         {/* AI tutor */}
         <section className="border-t border-line/60">
