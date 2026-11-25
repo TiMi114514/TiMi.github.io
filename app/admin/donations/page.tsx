@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Check, Download, EyeOff, ImageUp, RotateCcw, Search, X } from 'lucide-react';
 import {
   Badge,
@@ -19,7 +19,7 @@ import {
   useAdminData,
 } from '@/components/admin/ui';
 import { supabase } from '@/lib/supabase';
-import { formatMoney, qrUrl, type Currency } from '@/lib/donations';
+import { formatMoney, getPaymentSettings, qrUrl, type Currency, type PaymentSettings } from '@/lib/donations';
 
 type AdminDonation = {
   id: number;
@@ -98,6 +98,95 @@ function QrUploader({ method, label }: { method: 'wechat' | 'alipay'; label: str
   );
 }
 
+function PaymentLinks() {
+  const [value, setValue] = useState<PaymentSettings | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+
+  useEffect(() => {
+    void getPaymentSettings().then(setValue);
+  }, []);
+
+  async function save(event: React.FormEvent) {
+    event.preventDefault();
+    if (!value) return;
+    setSaving(true);
+    setNote(null);
+    try {
+      await rpc('admin_setting_set', {
+        p_key: 'donate.payments',
+        p_value: {
+          card_url: value.card_url.trim(),
+          card_provider: value.card_provider.trim() || 'Stripe',
+          paypal_url: value.paypal_url.trim(),
+        },
+        p_public: true,
+      });
+      setNote('Saved. The donate page uses the new links immediately.');
+    } catch (caught) {
+      setNote(caught instanceof Error ? caught.message : 'Save failed.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!value) return <Empty>Loading…</Empty>;
+  return (
+    <form onSubmit={save} className="grid gap-4 p-5 lg:grid-cols-[1fr_1fr]">
+      <div className="space-y-3 text-[12px]">
+        <label className="block space-y-1">
+          <span className="text-[#71717a]">Card checkout link (Visa / Mastercard / UnionPay / Amex)</span>
+          <input
+            value={value.card_url}
+            onChange={(e) => setValue({ ...value, card_url: e.target.value })}
+            placeholder="https://buy.stripe.com/…"
+            className={`${inputClass} font-mono`}
+          />
+        </label>
+        <label className="block space-y-1">
+          <span className="text-[#71717a]">Provider name shown to donors</span>
+          <input value={value.card_provider} onChange={(e) => setValue({ ...value, card_provider: e.target.value })} placeholder="Stripe" className={inputClass} />
+        </label>
+        <label className="block space-y-1">
+          <span className="text-[#71717a]">PayPal link (optional)</span>
+          <input
+            value={value.paypal_url}
+            onChange={(e) => setValue({ ...value, paypal_url: e.target.value })}
+            placeholder="https://www.paypal.com/paypalme/…"
+            className={`${inputClass} font-mono`}
+          />
+        </label>
+        <div className="flex items-center gap-3">
+          <Button type="submit" variant="dark" disabled={saving}>
+            {saving ? 'Saving…' : 'Save links'}
+          </Button>
+          {note ? <span className="text-[11.5px] text-[#52525b]">{note}</span> : null}
+        </div>
+      </div>
+      <div className="rounded-lg bg-[#fafafa] p-4 text-[11.5px] leading-relaxed text-[#52525b]">
+        <p className="font-semibold text-[#18181b]">How card donations work</p>
+        <ol className="mt-2 list-decimal space-y-1.5 pl-4">
+          <li>
+            In Stripe, create a <b>Payment Link</b> with “Let customers choose what to pay” (CNY or USD). Enable cards; UnionPay is
+            accepted through Stripe’s card network where available. Paste the link above.
+          </li>
+          <li>
+            Donors fill in the form; the site saves a pending gift and opens the link with{' '}
+            <span className="font-mono">client_reference_id=&lt;gift id&gt;</span>.
+          </li>
+          <li>
+            In the Stripe dashboard, find the payment by that reference, then press <b>Confirm</b> on the gift below.
+          </li>
+          <li>Card numbers are entered only on the provider’s page — this site never sees them (no PCI scope).</li>
+        </ol>
+        <p className="mt-2 text-[#71717a]">
+          Automatic confirmation needs a server-side webhook (Supabase Edge Function) — ask when you want it.
+        </p>
+      </div>
+    </form>
+  );
+}
+
 export default function AdminDonationsPage() {
   const [status, setStatus] = useState<'all' | 'messages' | AdminDonation['status']>('pending');
   const [query, setQuery] = useState('');
@@ -166,6 +255,10 @@ export default function AdminDonationsPage() {
         <StatCard label="Confirmed CNY (shown)" value={data ? formatMoney(sum('CNY'), 'CNY', 'en-US') : '—'} tone="green" />
         <StatCard label="Confirmed USD (shown)" value={data ? formatMoney(sum('USD'), 'USD', 'en-US') : '—'} tone="green" />
       </div>
+
+      <Panel className="mt-4" title="Card & PayPal checkout">
+        <PaymentLinks />
+      </Panel>
 
       <Panel className="mt-4" title="Payment QR codes">
         <div className="grid gap-5 p-5 md:grid-cols-2">

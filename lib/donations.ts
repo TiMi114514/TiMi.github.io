@@ -2,7 +2,42 @@
 import { supabase } from '@/lib/supabase';
 
 export type Currency = 'CNY' | 'USD';
-export type PayMethod = 'wechat' | 'alipay' | 'paypal' | 'other';
+export type PayMethod = 'wechat' | 'alipay' | 'card' | 'paypal' | 'other';
+
+export type PaymentSettings = {
+  /** Hosted checkout link for bank cards, e.g. a Stripe Payment Link (https://buy.stripe.com/…). */
+  card_url: string;
+  card_provider: string;
+  /** PayPal.me or hosted button link. */
+  paypal_url: string;
+};
+
+export async function getPaymentSettings(): Promise<PaymentSettings> {
+  const fallback: PaymentSettings = { card_url: '', card_provider: 'Stripe', paypal_url: '' };
+  if (!supabase) return fallback;
+  const { data, error } = await supabase.rpc('get_public_setting', { p_key: 'donate.payments' });
+  if (error || !data) return fallback;
+  return { ...fallback, ...(data as Partial<PaymentSettings>) };
+}
+
+/**
+ * Add the donation id to a hosted checkout link so the payment can be matched
+ * in the provider dashboard (Stripe Payment Links read client_reference_id).
+ */
+export function checkoutUrl(base: string, donationId: string, email?: string | null): string {
+  try {
+    const url = new URL(base);
+    if (url.hostname.endsWith('stripe.com')) {
+      url.searchParams.set('client_reference_id', donationId);
+      if (email) url.searchParams.set('prefilled_email', email);
+    } else {
+      url.searchParams.set('ref', donationId);
+    }
+    return url.toString();
+  } catch {
+    return base;
+  }
+}
 
 export type WallEntry = {
   id: string;

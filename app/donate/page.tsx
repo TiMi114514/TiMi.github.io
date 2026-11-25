@@ -1,20 +1,24 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Crown, Heart, QrCode, RefreshCw } from 'lucide-react';
+import { CreditCard, Crown, ExternalLink, Heart, Lock, QrCode, RefreshCw, Wallet } from 'lucide-react';
+import { CardBrands } from '@/components/CardBrands';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { useAuth } from '@/components/AuthProvider';
 import { useI18n } from '@/lib/i18n';
 import { getVisitorId } from '@/lib/session';
 import {
+  checkoutUrl,
   formatMoney,
   getDonationWall,
+  getPaymentSettings,
   qrUrl,
   submitDonation,
   type Currency,
   type DonationWall,
   type PayMethod,
+  type PaymentSettings,
   type TopDonor,
 } from '@/lib/donations';
 
@@ -50,7 +54,9 @@ export default function DonatePage() {
 
   const [currency, setCurrency] = useState<Currency>('CNY');
   const [amount, setAmount] = useState('');
-  const [method, setMethod] = useState<PayMethod>('wechat');
+  const [method, setMethod] = useState<PayMethod>('card');
+  const [payTab, setPayTab] = useState<'card' | 'qr' | 'paypal'>('card');
+  const [payments, setPayments] = useState<PaymentSettings>({ card_url: '', card_provider: 'Stripe', paypal_url: '' });
   const [name, setName] = useState('');
   const [anonymous, setAnonymous] = useState(false);
   const [message, setMessage] = useState('');
@@ -83,7 +89,15 @@ export default function DonatePage() {
 
   useEffect(() => {
     void load();
+    void getPaymentSettings().then(setPayments);
   }, [load]);
+
+  function choosePayTab(tab: 'card' | 'qr' | 'paypal') {
+    setPayTab(tab);
+    setMethod(tab === 'card' ? 'card' : tab === 'paypal' ? 'paypal' : 'wechat');
+  }
+
+  const cardCheckout = method === 'card' && Boolean(payments.card_url);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -91,6 +105,9 @@ export default function DonatePage() {
     setDone(null);
     const value = Number(amount);
     if (!(value > 0)) return setError(t('donate.errAmount'));
+    if (method === 'card' && !payments.card_url) return setError(t('donate.cardUnavailable'));
+    // Open the tab synchronously so pop-up blockers allow it; navigate once the pledge is saved.
+    const checkoutTab = cardCheckout ? window.open('about:blank', '_blank') : null;
     setBusy(true);
     try {
       const result = await submitDonation({
@@ -104,11 +121,19 @@ export default function DonatePage() {
         reference: reference.trim(),
         visitor: getVisitorId(),
       });
-      setDone(t('donate.thanksDonation', { id: result.public_id }));
+      if (cardCheckout) {
+        const url = checkoutUrl(payments.card_url, result.public_id, user?.email);
+        if (checkoutTab) checkoutTab.location.href = url;
+        else window.location.href = url;
+        setDone(t('donate.cardOpened', { id: result.public_id }));
+      } else {
+        setDone(t('donate.thanksDonation', { id: result.public_id }));
+      }
       setAmount('');
       setMessage('');
       setReference('');
     } catch (caught) {
+      checkoutTab?.close();
       setError(caught instanceof Error ? caught.message : 'Failed.');
     } finally {
       setBusy(false);
@@ -187,16 +212,65 @@ export default function DonatePage() {
           </section>
 
           <div className="mt-5 grid gap-5 lg:grid-cols-[0.85fr_1.15fr]">
-            {/* QR codes */}
+            {/* Payment methods */}
             <section className="rounded-2xl border border-line bg-paper p-5 sm:p-7">
               <h2 className="font-display text-[22px] leading-none">{t('donate.payTitle')}</h2>
               <p className="mt-2 text-[12.5px] leading-relaxed text-muted">{t('donate.payHint')}</p>
-              <div className="mt-6 flex flex-wrap justify-center gap-6">
-                <QrImage method="wechat" label={t('donate.wechat')} soon={t('donate.noQr')} />
-                <QrImage method="alipay" label={t('donate.alipay')} soon={t('donate.noQr')} />
-              </div>
-            </section>
 
+              <div className="mt-4 inline-flex flex-wrap rounded-full border border-line bg-cream/60 p-1">
+                {(
+                  [
+                    ['card', t('donate.tab.card'), <CreditCard key="c" className="h-3.5 w-3.5" />],
+                    ['qr', t('donate.tab.qr'), <QrCode key="q" className="h-3.5 w-3.5" />],
+                    ['paypal', t('donate.tab.paypal'), <Wallet key="p" className="h-3.5 w-3.5" />],
+                  ] as const
+                ).map(([value, label, icon]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => choosePayTab(value)}
+                    className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] transition-colors ${payTab === value ? 'bg-ink text-cream' : 'text-muted hover:text-ink'}`}
+                  >
+                    {icon}
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {payTab === 'card' ? (
+                <div className="mt-6">
+                  <CardBrands />
+                  <p className="mt-3 text-[13px] font-medium">{t('donate.cardTitle')}</p>
+                  <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">
+                    {t('donate.cardHint', { provider: payments.card_provider || 'Stripe' })}
+                  </p>
+                  {payments.card_url ? (
+                    <p className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-[#cfe1d4] bg-[#eef5ef] px-3 py-1 text-[11.5px] text-[#3f7d5a]">
+                      <Lock className="h-3.5 w-3.5" aria-hidden /> {t('donate.secure')}
+                    </p>
+                  ) : (
+                    <p className="mt-4 rounded-xl border border-line bg-cream/60 px-3 py-2 text-[12px] text-muted">{t('donate.cardUnavailable')}</p>
+                  )}
+                </div>
+              ) : payTab === 'qr' ? (
+                <div className="mt-6 flex flex-wrap justify-center gap-6">
+                  <QrImage method="wechat" label={t('donate.wechat')} soon={t('donate.noQr')} />
+                  <QrImage method="alipay" label={t('donate.alipay')} soon={t('donate.noQr')} />
+                </div>
+              ) : (
+                <div className="mt-6">
+                  <p className="text-[12.5px] leading-relaxed text-muted">{t('donate.paypalHint')}</p>
+                  {payments.paypal_url ? (
+                    <a href={payments.paypal_url} target="_blank" rel="noopener noreferrer" className="btn-light mt-4 px-4 py-2.5">
+                      <Wallet className="h-4 w-4" aria-hidden /> {t('donate.paypalButton')}
+                      <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                    </a>
+                  ) : (
+                    <p className="mt-4 rounded-xl border border-line bg-cream/60 px-3 py-2 text-[12px] text-muted">{t('donate.paypalUnavailable')}</p>
+                  )}
+                </div>
+              )}
+            </section>
             {/* Form */}
             <form onSubmit={submit} className="rounded-2xl border border-line bg-paper p-5 sm:p-7">
               <h2 className="font-display text-[22px] leading-none">{t('donate.formTitle')}</h2>
@@ -240,18 +314,28 @@ export default function DonatePage() {
                     <div className="grid gap-3 sm:grid-cols-2">
                       <label className="block space-y-1.5 text-[12.5px] text-muted">
                         <span>{t('donate.method')}</span>
-                        <select value={method} onChange={(e) => setMethod(e.target.value as PayMethod)} className="input">
-                          {(['wechat', 'alipay', 'paypal', 'other'] as const).map((value) => (
+                        <select
+                          value={method}
+                          onChange={(e) => {
+                            const next = e.target.value as PayMethod;
+                            setMethod(next);
+                            setPayTab(next === 'card' ? 'card' : next === 'paypal' ? 'paypal' : 'qr');
+                          }}
+                          className="input"
+                        >
+                          {(['card', 'wechat', 'alipay', 'paypal', 'other'] as const).map((value) => (
                             <option key={value} value={value}>
                               {t(`donate.method.${value}`)}
                             </option>
                           ))}
                         </select>
                       </label>
-                      <label className="block space-y-1.5 text-[12.5px] text-muted">
-                        <span>{t('donate.reference')}</span>
-                        <input value={reference} maxLength={80} onChange={(e) => setReference(e.target.value)} className="input" placeholder={t('donate.referencePh')} />
-                      </label>
+                      {method === 'card' ? null : (
+                        <label className="block space-y-1.5 text-[12.5px] text-muted">
+                          <span>{t('donate.reference')}</span>
+                          <input value={reference} maxLength={80} onChange={(e) => setReference(e.target.value)} className="input" placeholder={t('donate.referencePh')} />
+                        </label>
+                      )}
                     </div>
                   </>
 
@@ -287,10 +371,19 @@ export default function DonatePage() {
                 {error ? <p className="rounded-xl border border-[#e7c9c1] bg-[#fbeeea] px-3 py-2 text-[12.5px] text-[#8a3b2a]">{error}</p> : null}
                 {done ? <p className="rounded-xl border border-[#cfe1d4] bg-[#eef5ef] px-3 py-2 text-[12.5px] text-[#3f7d5a]">{done}</p> : null}
 
-                <button type="submit" disabled={busy} className="btn-dark w-full py-3">
-                  <Heart className="h-4 w-4" aria-hidden />
-                  {busy ? t('donate.submitting') : t('donate.submit')}
+                <button type="submit" disabled={busy || (method === 'card' && !payments.card_url)} className="btn-dark w-full py-3">
+                  {method === 'card' ? <CreditCard className="h-4 w-4" aria-hidden /> : <Heart className="h-4 w-4" aria-hidden />}
+                  {busy
+                    ? method === 'card'
+                      ? t('donate.cardRedirecting')
+                      : t('donate.submitting')
+                    : method === 'card'
+                      ? Number(amount) > 0
+                        ? t('donate.cardButton', { amount: money(Number(amount), currency) })
+                        : t('donate.cardButtonNoAmount')
+                      : t('donate.submit')}
                 </button>
+                {method === 'card' ? <CardBrands className="justify-center" /> : null}
               </div>
             </form>
           </div>
