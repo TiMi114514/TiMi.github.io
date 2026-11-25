@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -14,6 +14,7 @@ const nav: { href: string; label: MessageKey }[] = [
   { href: '/papers', label: 'nav.papers' },
   { href: '/tutor', label: 'nav.tutors' },
   { href: '/pomodoro', label: 'nav.pomodoro' },
+  { href: '/donate', label: 'nav.donate' },
 ];
 
 export function Header() {

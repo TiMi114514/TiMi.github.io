@@ -67,11 +67,7 @@ function detectLocale(): Locale {
   } catch {
     /* storage unavailable */
   }
-  const candidates = navigator.languages?.length ? navigator.languages : [navigator.language];
-  for (const tag of candidates) {
-    const match = matchLocale(tag);
-    if (match) return match;
-  }
+  // English by default; visitors switch language from the header and the choice is remembered.
   return 'en';
 }
 

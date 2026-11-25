@@ -158,9 +158,112 @@ export function getAudience(days = 30) {
   return call<Audience>('admin_audience', { p_days: days });
 }
 
+// ---------- App users ----------
+
+export type AppUser = {
+  id: string;
+  email: string;
+  display_name: string;
+  created_at: string;
+  last_sign_in_at: string | null;
+  confirmed: boolean;
+  is_admin: boolean;
+  last_active: string | null;
+  status: VisitorStatus;
+  ip: string | null;
+  country_code: string | null;
+  country: string | null;
+  region: string | null;
+  city: string | null;
+  user_agent: string | null;
+  downloads: number;
+  last_download_at: string | null;
+};
+
+export function getAppUsers(search?: string) {
+  return call<ListResult<AppUser>>('admin_users', { p_search: search || null, p_limit: 500 });
+}
+
+export type UserPresence = Omit<LiveVisitor, 'kind' | 'user_id' | 'email' | 'display_name' | 'downloads' | 'same_fingerprint'>;
+
+export type UserDetail = {
+  user: {
+    id: string;
+    email: string;
+    display_name: string;
+    created_at: string;
+    last_sign_in_at: string | null;
+    email_confirmed_at: string | null;
+    confirmed: boolean;
+    provider: string | null;
+    is_admin: boolean;
+  };
+  presence: UserPresence[];
+  sessions: {
+    id: string;
+    ip: string | null;
+    user_agent: string | null;
+    created_at: string;
+    refreshed_at: string | null;
+    updated_at: string | null;
+    not_after: string | null;
+    aal: string | null;
+  }[];
+  downloads: { at: string; file: string | null; paper_id: string | null; dataset?: string | null; source: string }[];
+  download_count: number;
+  page_views: { at: string; path: string; referrer: string | null; country: string | null }[];
+  page_view_count: number;
+  security_events: { at: string; kind: string; ip: string | null; user_agent: string | null }[];
+  tutor_requests: { at: string; subject: string; status: string }[];
+  teacher_application: { at: string; subjects: string | null; status: string } | null;
+  generated_at: string;
+};
+
+export function getUserDetail(userId: string) {
+  return call<UserDetail>('admin_user_detail', { p_user_id: userId });
+}
+
+export type IpLocation = {
+  ip: string;
+  country?: string;
+  region?: string;
+  city?: string;
+  isp?: string;
+  org?: string;
+  asn?: number;
+  timezone?: string;
+};
+
+const ipCache = new Map<string, Promise<IpLocation | null>>();
+
+/** Resolve an arbitrary IP to a place (ipwho.is, CORS-enabled). Cached per page load. */
+export function lookupIp(ip: string, lang = 'zh-CN'): Promise<IpLocation | null> {
+  const key = `${ip}|${lang}`;
+  const cached = ipCache.get(key);
+  if (cached) return cached;
+  const promise = fetch(`https://ipwho.is/${encodeURIComponent(ip)}?lang=${lang}`, { cache: 'force-cache' })
+    .then((response) => (response.ok ? response.json() : null))
+    .then((data: Record<string, any> | null) => {
+      if (!data || data.success === false) return null;
+      return {
+        ip,
+        country: data.country,
+        region: data.region,
+        city: data.city,
+        isp: data.connection?.isp,
+        org: data.connection?.org,
+        asn: data.connection?.asn,
+        timezone: data.timezone?.id,
+      } as IpLocation;
+    })
+    .catch(() => null);
+  ipCache.set(key, promise);
+  return promise;
+}
+
 // ---------- Resource registry ----------
 
-export type ResourceKind = 'integration' | 'mcp_server' | 'secret' | 'workflow' | 'agent';
+export type ResourceKind = 'integration' | 'mcp_server' | 'secret' | 'workflow' | 'agent' | 'domain';
 export type ResourceStatus = 'active' | 'disabled' | 'error' | 'planned';
 
 export type AdminResource = {
@@ -218,10 +321,12 @@ export const ADMIN_ENDPOINTS: {
   { name: 'admin_audience', args: 'p_days int = 30', returns: '{ visitors, signed_in, regions, countries, languages, user_agents }', access: 'admin', description: 'Audience breakdown from visitor records.' },
   { name: 'admin_analytics', args: 'p_days int = 7', returns: '{ total_visits, unique_visitors, live_visitors, series, pages, countries, … }', access: 'admin', description: 'Traffic analytics.' },
   { name: 'admin_download_analytics', args: 'p_days int = 30', returns: '{ total_downloads, unique_downloaders, series, top_files, datasets, … }', access: 'admin', description: 'Download analytics.' },
-  { name: 'admin_resource_list', args: 'p_kind text (integration | mcp_server | secret | workflow | agent | null)', returns: '{ items: AdminResource[], total }', access: 'admin', description: 'Registry of integrations, MCP servers, secret metadata, workflows and agents.' },
+  { name: 'admin_resource_list', args: 'p_kind text (integration | mcp_server | secret | workflow | agent | domain | null)', returns: '{ items: AdminResource[], total }', access: 'admin', description: 'Registry of integrations, MCP servers, secret metadata, workflows and agents.' },
   { name: 'admin_resource_upsert', args: 'p_kind, p_slug, p_name, p_status, p_config jsonb, p_notes', returns: 'AdminResource', access: 'admin', description: 'Create or update a registry entry (audited). Secrets reject value/secret/token fields.' },
   { name: 'admin_resource_delete', args: 'p_kind, p_slug', returns: '{ deleted }', access: 'admin', description: 'Remove a registry entry (audited).' },
-  { name: 'admin_list_users', args: '—', returns: 'User[]', access: 'admin', description: 'Auth users with verification status.' },
+  { name: 'admin_users', args: 'p_search text, p_limit int = 500', returns: '{ items: AppUser[], total }', access: 'admin', description: 'Accounts with status, last IP / location, last active and download count.' },
+  { name: 'admin_user_detail', args: 'p_user_id uuid', returns: '{ user, presence, sessions, downloads, page_views, security_events, … }', access: 'admin', description: 'Everything known about one account.' },
+  { name: 'admin_list_users', args: '—', returns: 'User[]', access: 'admin', description: 'Legacy: auth users with verification status (use admin_users).' },
   { name: 'home_stats', args: '—', returns: '{ download_users, download_files, live_learners, live_guests }', access: 'public', description: 'Home page counters.' },
   { name: 'touch_presence', args: 'p_visitor text, p_path text, p_meta jsonb', returns: 'void', access: 'public', description: 'Visitor heartbeat. IP, country and UA are taken from request headers server-side.' },
   { name: 'log_security_event', args: 'p_kind text, p_email text, p_detail jsonb', returns: 'void', access: 'public', description: 'Records sign-in / sign-up / reset events with IP and UA (rate limited per IP).' },

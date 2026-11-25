@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { useT } from '@/lib/i18n';
@@ -40,6 +40,9 @@ export function Footer() {
             </Link>
             <Link href="/pomodoro" className="block transition-colors hover:text-ink">
               {t('nav.pomodoro')}
+            </Link>
+            <Link href="/donate" className="block transition-colors hover:text-ink">
+              {t('footer.donate')}
             </Link>
           </div>
           <div className="space-y-2.5">
