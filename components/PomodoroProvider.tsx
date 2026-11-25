@@ -12,6 +12,7 @@ import {
   type PomodoroMode,
 } from '@/lib/pomodoro';
 import { resolveGeoZone, zoneLabel, type GeoZone } from '@/lib/geo-time';
+import { useI18n } from '@/lib/i18n';
 
 const STORAGE_KEY = 'differential-quant.pomodoro.v1';
 
@@ -88,6 +89,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
   const [zone, setZone] = useState<GeoZone | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const overlayRef = useRef<HTMLDivElement | null>(null);
+  const { locale, t } = useI18n();
 
   useEffect(() => {
     const saved = readSaved();
@@ -112,13 +114,13 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let alive = true;
-    resolveGeoZone().then((resolved) => {
+    resolveGeoZone(locale).then((resolved) => {
       if (alive) setZone(resolved);
     });
     return () => {
       alive = false;
     };
-  }, []);
+  }, [locale]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -243,24 +245,22 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
             type="button"
             onClick={closeFocusScreen}
             className="absolute right-5 top-5 grid h-10 w-10 place-items-center rounded-full border border-white/20 text-white/70 transition-colors hover:text-white"
-            aria-label="Exit focus screen"
+            aria-label={t('pomo.exit')}
           >
             <X className="h-4 w-4" />
           </button>
 
           <p className="text-[11px] uppercase tracking-[0.32em] text-white/40">
-            {mode === 'focus' ? 'Focus' : 'Break'}
+            {mode === 'focus' ? t('pomo.focus') : t('pomo.break')}
           </p>
           <p className="mt-5 font-display text-[clamp(64px,13vw,170px)] leading-none tabular-nums">
             {formatTime(new Date(now), zone?.timeZone)}
           </p>
           <p className="mt-6 font-display text-[clamp(26px,4.6vw,52px)] text-white/60 tabular-nums">
-            {formatClock(remaining)} remaining
+            {t('pomo.remaining', { time: formatClock(remaining) })}
           </p>
           <p className="mt-4 text-[11px] uppercase tracking-[0.24em] text-white/35">
-            {zone
-              ? `${zoneLabel(zone)} · ${zone.source === 'ip' ? 'from your IP' : 'device timezone'}`
-              : 'Local time'}
+            {zone ? zoneLabel(zone, locale) : t('pomo.locating')}
           </p>
 
           <div className="mt-10 flex items-center gap-3">
@@ -270,7 +270,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
                 onClick={pause}
                 className="rounded-full border border-white/25 px-5 py-2 text-[13px] text-white/80 transition-colors hover:border-white/60 hover:text-white"
               >
-                Pause
+                {t('pomo.pause')}
               </button>
             ) : (
               <button
@@ -278,7 +278,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
                 onClick={start}
                 className="rounded-full border border-white/25 px-5 py-2 text-[13px] text-white/80 transition-colors hover:border-white/60 hover:text-white"
               >
-                Start
+                {t('pomo.start')}
               </button>
             )}
             <button
@@ -286,14 +286,14 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
               onClick={reset}
               className="rounded-full border border-white/25 px-5 py-2 text-[13px] text-white/80 transition-colors hover:border-white/60 hover:text-white"
             >
-              Reset
+              {t('pomo.reset')}
             </button>
             <button
               type="button"
               onClick={() => switchMode(mode === 'focus' ? 'break' : 'focus')}
               className="rounded-full border border-white/25 px-5 py-2 text-[13px] text-white/80 transition-colors hover:border-white/60 hover:text-white"
             >
-              {mode === 'focus' ? 'Take a break' : 'Back to focus'}
+              {mode === 'focus' ? t('pomo.takeBreak') : t('pomo.backToFocus')}
             </button>
           </div>
         </div>

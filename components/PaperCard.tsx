@@ -1,6 +1,9 @@
+'use client';
+
 import Link from 'next/link';
 import { Download, FileText } from 'lucide-react';
 import type { Paper } from '@/lib/types';
+import { useT } from '@/lib/i18n';
 
 export function PaperCard({
   paper,
@@ -13,9 +16,11 @@ export function PaperCard({
   onDownload?: () => void;
   busy?: boolean;
 }) {
+  const t = useT();
   const meta =
-    [paper.questions ? `${paper.questions} questions` : null, paper.size].filter(Boolean).join(' · ') ||
-    'PDF paper';
+    [paper.questions ? t('card.questions', { n: paper.questions }) : null, paper.size]
+      .filter(Boolean)
+      .join(' · ') || t('card.pdf');
 
   return (
     <article className="flex h-full flex-col rounded-2xl border border-line bg-paper p-6 shadow-card transition duration-200 hover:-translate-y-0.5 hover:shadow-float">
@@ -46,7 +51,7 @@ export function PaperCard({
             className="btn w-full border border-line bg-paper py-2.5 text-[13px] text-ink hover:bg-cream"
           >
             <Download className="h-4 w-4" aria-hidden />
-            {busy ? 'Preparing…' : 'Download paper'}
+            {busy ? t('card.preparing') : t('card.download')}
           </button>
         ) : (
           <Link
@@ -54,7 +59,7 @@ export function PaperCard({
             className="btn w-full border border-line bg-paper py-2.5 text-[13px] text-ink hover:bg-cream"
           >
             <Download className="h-4 w-4" aria-hidden />
-            View in archive
+            {t('card.view')}
           </Link>
         )}
       </div>

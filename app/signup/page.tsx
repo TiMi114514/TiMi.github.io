@@ -8,9 +8,11 @@ import { Footer } from '@/components/Footer';
 import { useAuth } from '@/components/AuthProvider';
 import { forwardTeacherApplication } from '@/lib/teacher-email';
 import { appUrl, supabase } from '@/lib/supabase';
+import { useT } from '@/lib/i18n';
 
 export default function SignupPage() {
   const router = useRouter();
+  const t = useT();
   const { user, loading } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -40,13 +42,13 @@ export default function SignupPage() {
       return;
     }
     if (file.size > MAX_FILE_BYTES) {
-      setError('The attachment must be 10 MB or smaller.');
+      setError(t('signup.fileTooBig'));
       event.target.value = '';
       setTeacherFile(null);
       return;
     }
     if (!ALLOWED_TYPES.includes(file.type)) {
-      setError('Attach a JPG, PNG, WebP, PDF, DOC or DOCX file.');
+      setError(t('signup.fileType'));
       event.target.value = '';
       setTeacherFile(null);
       return;
@@ -61,11 +63,11 @@ export default function SignupPage() {
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!supabase) {
-      setError('Supabase is not configured for this deployment yet.');
+      setError(t('auth.notConfigured'));
       return;
     }
     if (password.length < 8) {
-      setError('Use at least 8 characters for your password.');
+      setError(t('signup.pwShort'));
       return;
     }
     setBusy(true);
@@ -145,28 +147,28 @@ export default function SignupPage() {
       <Header />
       <main className="container-page flex min-h-[calc(100vh-72px)] items-start justify-center py-16">
         <div className="w-full max-w-[440px]">
-          <p className="eyebrow">Create account</p>
+          <p className="eyebrow">{t('signup.eyebrow')}</p>
           <h1 className="mt-3 font-display text-[42px] leading-none tracking-[-0.01em]">
-            Start with the archive
+            {t('signup.title')}
           </h1>
           <p className="mt-3 text-[13.5px] leading-relaxed text-muted">
-            Free to browse. One email check unlocks downloads and both tutors.
+            {t('signup.body')}
           </p>
 
           <form onSubmit={submit} className="mt-8 space-y-4">
             <label className="block space-y-1.5 text-[12.5px] text-muted">
-              <span>Name</span>
+              <span>{t('signup.name')}</span>
               <input
                 required
                 autoComplete="name"
                 className="input"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                placeholder="Your name"
+                placeholder={t('signup.namePh')}
               />
             </label>
             <label className="block space-y-1.5 text-[12.5px] text-muted">
-              <span>Email</span>
+              <span>{t('auth.email')}</span>
               <input
                 type="email"
                 required
@@ -178,7 +180,7 @@ export default function SignupPage() {
               />
             </label>
             <label className="block space-y-1.5 text-[12.5px] text-muted">
-              <span>Password</span>
+              <span>{t('auth.password')}</span>
               <input
                 type="password"
                 required
@@ -187,7 +189,7 @@ export default function SignupPage() {
                 className="input"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="At least 8 characters"
+                placeholder={t('auth.atLeast8')}
               />
             </label>
 
@@ -199,10 +201,9 @@ export default function SignupPage() {
                 className="mt-0.5 h-4 w-4 accent-ink"
               />
               <span>
-                <span className="block text-[13px] text-ink">Apply to become a teacher</span>
+                <span className="block text-[13px] text-ink">{t('signup.applyTeacher')}</span>
                 <span className="mt-0.5 block text-[11.5px] leading-relaxed text-muted">
-                  Optional — reviewed by the A-Level Hub team. Approved teachers can take
-                  human tutor sessions.
+                  {t('signup.applyHint')}
                 </span>
               </span>
             </label>
@@ -210,26 +211,26 @@ export default function SignupPage() {
             {applyTeacher ? (
               <div className="animate-fade-up space-y-3 rounded-xl border border-line bg-paper/60 p-3.5">
                 <label className="block space-y-1.5 text-[12.5px] text-muted">
-                  <span>Subjects you teach</span>
+                  <span>{t('signup.subjects')}</span>
                   <input
                     className="input"
                     value={teacherSubjects}
                     onChange={(event) => setTeacherSubjects(event.target.value)}
-                    placeholder="Mathematics, Physics…"
+                    placeholder={t('signup.subjectsPh')}
                   />
                 </label>
                 <label className="block space-y-1.5 text-[12.5px] text-muted">
-                  <span>Personal statement</span>
+                  <span>{t('signup.statement')}</span>
                   <textarea
                     rows={4}
                     className="input resize-y"
                     value={teacherMessage}
                     onChange={(event) => setTeacherMessage(event.target.value)}
-                    placeholder="Qualifications, exam boards, teaching experience, why you want to tutor…"
+                    placeholder={t('signup.statementPh')}
                   />
                 </label>
                 <label className="block space-y-1.5 text-[12.5px] text-muted">
-                  <span>Photo or document (optional, max 10 MB)</span>
+                  <span>{t('signup.attach')}</span>
                   <input
                     type="file"
                     accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx"
@@ -237,7 +238,7 @@ export default function SignupPage() {
                     className="block w-full cursor-pointer rounded-xl border border-line bg-white/80 px-3 py-2 text-[12px] text-muted file:mr-3 file:rounded-full file:border-0 file:bg-soft file:px-3 file:py-1.5 file:text-[11.5px] file:text-ink"
                   />
                   <span className="block text-[10.5px] text-muted/80">
-                    JPG, PNG, WebP, PDF, DOC or DOCX. Used only to review your application.
+                    {t('signup.attachHint')}
                   </span>
                 </label>
                 {teacherFile ? (
@@ -251,7 +252,7 @@ export default function SignupPage() {
                       onClick={() => setTeacherFile(null)}
                       className="shrink-0 text-muted underline decoration-line underline-offset-2 hover:text-ink"
                     >
-                      Remove
+                      {t('signup.remove')}
                     </button>
                   </div>
                 ) : null}
@@ -265,18 +266,18 @@ export default function SignupPage() {
             ) : null}
 
             <button type="submit" disabled={busy} className="btn-dark w-full py-3">
-              {busy ? 'Creating account…' : 'Create account'}
+              {busy ? t('signup.creating') : t('signup.create')}
             </button>
 
             <p className="text-center text-[11.5px] leading-relaxed text-muted">
-              We&apos;ll email you a link to verify your address before the archive is unlocked.
+              {t('signup.verifyNote')}
             </p>
           </form>
 
           <p className="mt-6 text-[13px] text-muted">
-            Already have an account?{' '}
+            {t('signup.already')}{' '}
             <Link href="/login" className="link-underline text-ink">
-              Sign in
+              {t('auth.signIn')}
             </Link>
           </p>
         </div>

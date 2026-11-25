@@ -8,6 +8,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { useAuth } from '@/components/AuthProvider';
 import { appUrl, supabase } from '@/lib/supabase';
+import { useI18n, type MessageKey } from '@/lib/i18n';
 
 type DownloadRow = {
   id: string | number;
@@ -23,10 +24,10 @@ type TeacherApplication = {
   created_at: string;
 };
 
-const teacherStatusCopy: Record<TeacherApplication['status'], string> = {
-  pending: 'Waiting for admin review. We will update this page once it is reviewed.',
-  approved: 'Approved — you can now take human tutor sessions.',
-  rejected: 'Not approved this time. Contact the team if you would like to reapply.',
+const teacherStatusCopy: Record<TeacherApplication['status'], MessageKey> = {
+  pending: 'account.teacher.pending',
+  approved: 'account.teacher.approved',
+  rejected: 'account.teacher.rejected',
 };
 
 const teacherStatusStyles: Record<TeacherApplication['status'], string> = {
@@ -37,6 +38,7 @@ const teacherStatusStyles: Record<TeacherApplication['status'], string> = {
 
 export default function AccountPage() {
   const router = useRouter();
+  const { locale, t } = useI18n();
   const { user, loading, verified, signOut, refresh } = useAuth();
   const [resending, setResending] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -90,7 +92,7 @@ export default function AccountPage() {
     setNotice(
       error
         ? error.message
-        : 'Verification email sent. Open the link in your inbox to confirm your address.',
+        : t('account.sent'),
     );
   }
 
@@ -120,7 +122,7 @@ export default function AccountPage() {
       <Header />
       <main className="container-page py-14 sm:py-20">
         <div className="mx-auto max-w-[760px]">
-          <p className="eyebrow">My account</p>
+          <p className="eyebrow">{t('account.eyebrow')}</p>
           <h1 className="mt-3 font-display text-[42px] leading-none tracking-[-0.01em]">
             {name}
           </h1>
@@ -135,19 +137,20 @@ export default function AccountPage() {
                 <div className="mt-1.5 flex items-center gap-2 text-[12px]">
                   {verified ? (
                     <span className="inline-flex items-center gap-1 rounded-full border border-[#cfe1d4] bg-[#eef5ef] px-2 py-0.5 text-[#3f7d5a]">
-                      <BadgeCheck className="h-3.5 w-3.5" /> Email verified
+                      <BadgeCheck className="h-3.5 w-3.5" /> {t('account.verified')}
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 rounded-full border border-[#e7d3b0] bg-[#fbf3e2] px-2 py-0.5 text-[#8a6420]">
-                      <MailWarning className="h-3.5 w-3.5" /> Email not verified
+                      <MailWarning className="h-3.5 w-3.5" /> {t('account.notVerified')}
                     </span>
                   )}
                   <span className="text-muted">
-                    joined{' '}
-                    {new Date(user.created_at).toLocaleDateString(undefined, {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
+                    {t('account.joined', {
+                      date: new Date(user.created_at).toLocaleDateString(locale, {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      }),
                     })}
                   </span>
                 </div>
@@ -157,7 +160,7 @@ export default function AccountPage() {
             {!verified ? (
               <div className="mt-6 rounded-xl border border-[#e7d3b0] bg-[#fbf3e2] px-4 py-3">
                 <p className="text-[13px] leading-relaxed text-[#6d5320]">
-                  Verify your email to unlock downloads and both tutors.
+                  {t('account.verifyPrompt')}
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   <button
@@ -166,10 +169,10 @@ export default function AccountPage() {
                     disabled={resending}
                     className="btn-dark px-4 py-2"
                   >
-                    {resending ? 'Sending…' : 'Resend verification email'}
+                    {resending ? t('account.sending') : t('account.resend')}
                   </button>
                   <button type="button" onClick={() => refresh()} className="btn-outline">
-                    I&apos;ve verified
+                    {t('verify.done')}
                   </button>
                 </div>
                 {notice ? (
@@ -180,16 +183,16 @@ export default function AccountPage() {
 
             <div className="mt-6 flex flex-wrap gap-3 border-t border-line/70 pt-5">
               <Link href="/papers" className="btn-light px-4 py-2">
-                <Download className="h-4 w-4" aria-hidden /> Browse papers
+                <Download className="h-4 w-4" aria-hidden /> {t('account.browse')}
               </Link>
               <Link href="/tutor" className="btn-light px-4 py-2">
-                Open the AI tutor
+                {t('account.openAi')}
               </Link>
               <Link href="/tutor/human" className="btn-light px-4 py-2">
-                <GraduationCap className="h-4 w-4" aria-hidden /> Human tutor
+                <GraduationCap className="h-4 w-4" aria-hidden /> {t('account.human')}
               </Link>
               <button type="button" onClick={handleSignOut} className="btn-outline ml-auto">
-                <LogOut className="h-3.5 w-3.5" aria-hidden /> Sign out
+                <LogOut className="h-3.5 w-3.5" aria-hidden /> {t('nav.signOut')}
               </button>
             </div>
           </div>
@@ -202,9 +205,9 @@ export default function AccountPage() {
                     <GraduationCap className="h-4 w-4" aria-hidden />
                   </span>
                   <div>
-                    <h2 className="font-display text-[20px] leading-none">Teacher application</h2>
+                    <h2 className="font-display text-[20px] leading-none">{t('account.teacherTitle')}</h2>
                     <p className="mt-1 text-[11.5px] text-muted">
-                      {teacherApplication.subjects || 'Subjects not specified'}
+                      {teacherApplication.subjects || t('account.noSubjects')}
                     </p>
                   </div>
                 </div>
@@ -213,11 +216,11 @@ export default function AccountPage() {
                     teacherStatusStyles[teacherApplication.status]
                   }`}
                 >
-                  {teacherApplication.status}
+                  {t(('status.' + teacherApplication.status) as MessageKey)}
                 </span>
               </div>
               <p className="mt-3 text-[12.5px] leading-relaxed text-muted">
-                {teacherStatusCopy[teacherApplication.status]}
+                {t(teacherStatusCopy[teacherApplication.status])}
               </p>
             </div>
           ) : null}
@@ -225,17 +228,17 @@ export default function AccountPage() {
           <div className="mt-10">
             <div className="flex items-end justify-between gap-4">
               <div>
-                <p className="eyebrow">History</p>
-                <h2 className="mt-2 font-display text-[26px] leading-none">Recent downloads</h2>
+                <p className="eyebrow">{t('account.historyEyebrow')}</p>
+                <h2 className="mt-2 font-display text-[26px] leading-none">{t('account.recent')}</h2>
               </div>
             </div>
 
             <div className="mt-4 divide-y divide-line/70 rounded-2xl border border-line bg-paper">
               {history === null ? (
-                <p className="px-5 py-4 text-[13px] text-muted">Loading…</p>
+                <p className="px-5 py-4 text-[13px] text-muted">{t('human.loading')}</p>
               ) : history.length === 0 ? (
                 <p className="px-5 py-4 text-[13px] text-muted">
-                  Nothing yet — papers you download will show up here.
+                  {t('account.none')}
                 </p>
               ) : (
                 history.map((row) => (
@@ -243,9 +246,9 @@ export default function AccountPage() {
                     key={row.id}
                     className="flex items-center justify-between gap-4 px-5 py-3.5 text-[13px]"
                   >
-                    <span className="truncate">{row.paper_title || 'Past paper'}</span>
+                    <span className="truncate">{row.paper_title || t('account.pastPaper')}</span>
                     <span className="shrink-0 text-[12px] text-muted">
-                      {new Date(row.created_at).toLocaleDateString(undefined, {
+                      {new Date(row.created_at).toLocaleDateString(locale, {
                         month: 'short',
                         day: 'numeric',
                       })}

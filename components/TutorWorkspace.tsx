@@ -7,6 +7,7 @@ import {
   listRagflowAssistants,
   type RagflowAssistant,
 } from '@/lib/ragflow';
+import { useT } from '@/lib/i18n';
 import { ChatPanel } from './ChatPanel';
 
 const SELECTED_KEY = 'differential-quant.assistant';
@@ -14,6 +15,7 @@ const SELECTED_KEY = 'differential-quant.assistant';
 export function TutorWorkspace() {
   const [assistants, setAssistants] = useState<RagflowAssistant[] | null>(null);
   const [selectedId, setSelectedId] = useState('');
+  const t = useT();
 
   useEffect(() => {
     let active = true;
@@ -61,7 +63,7 @@ export function TutorWorkspace() {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <label className="flex items-center gap-2 text-[12px] text-muted">
           <Database className="h-3.5 w-3.5" aria-hidden />
-          <span>Knowledge base</span>
+          <span>{t('workspace.kb')}</span>
           {assistants === null ? (
             <span className="inline-block h-7 w-36 animate-pulse rounded-lg bg-soft/70" />
           ) : assistants.length > 0 ? (
@@ -69,7 +71,7 @@ export function TutorWorkspace() {
               value={selectedId}
               onChange={(event) => choose(event.target.value)}
               className="rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[12px] text-ink outline-none focus:border-ink/40"
-              aria-label="Choose a knowledge base"
+              aria-label={t('workspace.choose')}
             >
               {assistants.map((item) => (
                 <option key={item.id} value={item.id}>
@@ -78,12 +80,12 @@ export function TutorWorkspace() {
               ))}
             </select>
           ) : (
-            <span className="text-[12px] text-muted">default assistant</span>
+            <span className="text-[12px] text-muted">{t('workspace.default')}</span>
           )}
         </label>
         {selected ? (
           <span className="text-[11px] text-muted">
-            {selected.kbNames.length} source{selected.kbNames.length === 1 ? '' : 's'}
+            {t('workspace.sources', { n: selected.kbNames.length })}
           </span>
         ) : null}
       </div>

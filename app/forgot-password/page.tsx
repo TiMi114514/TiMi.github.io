@@ -6,8 +6,10 @@ import { MailCheck } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { appUrl, supabase } from '@/lib/supabase';
+import { useT } from '@/lib/i18n';
 
 export default function ForgotPasswordPage() {
+  const t = useT();
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
@@ -16,7 +18,7 @@ export default function ForgotPasswordPage() {
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!supabase) {
-      setError('Accounts are not configured for this deployment yet.');
+      setError(t('auth.notConfigured'));
       return;
     }
     setBusy(true);
@@ -43,42 +45,48 @@ export default function ForgotPasswordPage() {
                 <MailCheck className="h-5 w-5" aria-hidden />
               </span>
               <h1 className="mt-5 font-display text-[38px] leading-[1.02] tracking-[-0.01em]">
-                Check your inbox
+                {t('forgot.checkInbox')}
               </h1>
               <p className="mt-3 text-[13.5px] leading-relaxed text-muted">
-                If an account exists for <span className="text-ink">{email}</span>, a password reset
-                link is on its way. Open it on this device to choose a new password.
+                {t('forgot.ifExists').split(/(\{\w+\})/).map((part, index) =>
+                  part === '{email}' ? (
+                    <span key={index} className="text-ink">
+                      {email}
+                    </span>
+                  ) : (
+                    part
+                  ),
+                )}
               </p>
               <p className="mt-4 rounded-xl border border-line bg-paper px-3.5 py-3 text-[12px] leading-relaxed text-muted">
-                The link expires after a short time. If it does not arrive, check spam or try again
-                in a few minutes.
+                {t('forgot.expires')}
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <Link href="/login" className="btn-dark px-5 py-2.5">
-                  Back to sign in
+                  {t('forgot.back')}
                 </Link>
                 <button
                   type="button"
                   onClick={() => setSent(false)}
                   className="btn-light px-5 py-2.5"
                 >
-                  Use a different email
+                  {t('forgot.different')}
                 </button>
               </div>
             </>
           ) : (
             <>
-              <p className="eyebrow">Account recovery</p>
+              <p className="eyebrow">{t('forgot.eyebrow')}</p>
               <h1 className="mt-3 font-display text-[42px] leading-none tracking-[-0.01em]">
-                Forgot your password?
+                {t('forgot.title')}
               </h1>
               <p className="mt-3 text-[13.5px] leading-relaxed text-muted">
-                Enter the email you signed up with and we&apos;ll send a link to choose a new one.
+                {t('forgot.body')}
               </p>
 
               <form onSubmit={submit} className="mt-8 space-y-4">
                 <label className="block space-y-1.5 text-[12.5px] text-muted">
-                  <span>Email</span>
+                  <span>{t('auth.email')}</span>
                   <input
                     type="email"
                     required
@@ -97,14 +105,14 @@ export default function ForgotPasswordPage() {
                 ) : null}
 
                 <button type="submit" disabled={busy} className="btn-dark w-full py-3">
-                  {busy ? 'Sending…' : 'Send reset link'}
+                  {busy ? t('forgot.sending') : t('forgot.send')}
                 </button>
               </form>
 
               <p className="mt-6 text-[13px] text-muted">
-                Remembered it?{' '}
+                {t('forgot.remembered')}{' '}
                 <Link href="/login" className="link-underline text-ink">
-                  Sign in
+                  {t('auth.signIn')}
                 </Link>
               </p>
             </>

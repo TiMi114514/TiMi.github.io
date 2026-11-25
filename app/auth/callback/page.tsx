@@ -6,9 +6,11 @@ import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { supabase } from '@/lib/supabase';
+import { useT } from '@/lib/i18n';
 
 export default function AuthCallbackPage() {
   const router = useRouter();
+  const t = useT();
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -45,25 +47,24 @@ export default function AuthCallbackPage() {
         <div className="w-full max-w-[440px] text-center">
           {failed ? (
             <>
-              <h1 className="font-display text-[36px] leading-tight">This link has expired</h1>
+              <h1 className="font-display text-[36px] leading-tight">{t('reset.expiredTitle')}</h1>
               <p className="mt-3 text-[13.5px] leading-relaxed text-muted">
-                Verification links are single-use. Sign in to request a fresh one from your account
-                page.
+                {t('callback.expiredBody')}
               </p>
               <div className="mt-7 flex justify-center gap-3">
                 <Link href="/login" className="btn-dark px-5 py-2.5">
-                  Sign in
+                  {t('auth.signIn')}
                 </Link>
                 <Link href="/verify" className="btn-light px-5 py-2.5">
-                  Resend email
+                  {t('callback.resend')}
                 </Link>
               </div>
             </>
           ) : (
             <>
-              <h1 className="font-display text-[36px] leading-tight">Signing you in…</h1>
+              <h1 className="font-display text-[36px] leading-tight">{t('callback.signingIn')}</h1>
               <p className="mt-3 text-[13.5px] text-muted">
-                Confirming your email and opening your account.
+                {t('callback.confirming')}
               </p>
               <span className="mx-auto mt-8 block h-1.5 w-40 animate-pulse rounded-full bg-soft" />
             </>

@@ -15,6 +15,7 @@ import { Footer } from '@/components/Footer';
 import { TutorTabs } from '@/components/TutorTabs';
 import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/lib/supabase';
+import { useI18n, type MessageKey } from '@/lib/i18n';
 
 type TutorRequest = {
   id: string;
@@ -45,6 +46,7 @@ const statusStyles: Record<TutorRequest['status'], string> = {
 
 export default function HumanTutorPage() {
   const { user, loading, verified, configured } = useAuth();
+  const { locale, t } = useI18n();
   const [email, setEmail] = useState('');
   const [subject, setSubject] = useState(subjects[0]);
   const [question, setQuestion] = useState('');
@@ -82,7 +84,7 @@ export default function HumanTutorPage() {
     event.preventDefault();
     if (!supabase || !user) return;
     if (!question.trim()) {
-      setError('Describe the question or topic you want help with.');
+      setError(t('human.describeErr'));
       return;
     }
     setBusy(true);
@@ -107,7 +109,7 @@ export default function HumanTutorPage() {
 
     setQuestion('');
     setPreferredAt('');
-    setNotice('Request sent. A human tutor will reply by email within one working day.');
+    setNotice(t('human.sent'));
 
     const { data } = await supabase
       .from('human_tutor_requests')
@@ -124,18 +126,17 @@ export default function HumanTutorPage() {
       <main className="container-page py-12 sm:py-16">
         <div className="mb-7 flex flex-wrap items-center justify-between gap-3">
           <TutorTabs active="human" />
-          <p className="text-[12px] text-muted">One-to-one help from a person</p>
+          <p className="text-[12px] text-muted">{t('human.sub')}</p>
         </div>
 
         <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
           <aside>
-            <p className="eyebrow">Human tutor</p>
+            <p className="eyebrow">{t('human.eyebrow')}</p>
             <h1 className="mt-4 max-w-[380px] font-display text-[40px] leading-[0.98] tracking-[-0.01em] sm:text-[46px]">
-              Prefer a person? Book a human tutor.
+              {t('human.title')}
             </h1>
             <p className="mt-5 max-w-[390px] text-[14px] leading-relaxed text-muted">
-              Send the question you are working on and a verified tutor will walk you through it
-              over a scheduled session or by email.
+              {t('human.body')}
             </p>
 
             <ul className="mt-8 space-y-5">
@@ -144,9 +145,9 @@ export default function HumanTutorPage() {
                   <CalendarClock className="h-4 w-4" aria-hidden />
                 </span>
                 <div>
-                  <p className="text-[13.5px] font-medium">1:1 walkthrough</p>
+                  <p className="text-[13.5px] font-medium">{t('human.l1t')}</p>
                   <p className="mt-0.5 max-w-[320px] text-[12.5px] leading-relaxed text-muted">
-                    Pick a time that suits you and work through the question step by step.
+                    {t('human.l1b')}
                   </p>
                 </div>
               </li>
@@ -155,10 +156,9 @@ export default function HumanTutorPage() {
                   <ShieldCheck className="h-4 w-4" aria-hidden />
                 </span>
                 <div>
-                  <p className="text-[13.5px] font-medium">Verified teachers</p>
+                  <p className="text-[13.5px] font-medium">{t('human.l2t')}</p>
                   <p className="mt-0.5 max-w-[320px] text-[12.5px] leading-relaxed text-muted">
-                    Teachers apply when they sign up and are reviewed by the A-Level Hub
-                    team before they take students.
+                    {t('human.l2b')}
                   </p>
                 </div>
               </li>
@@ -167,9 +167,9 @@ export default function HumanTutorPage() {
                   <Mail className="h-4 w-4" aria-hidden />
                 </span>
                 <div>
-                  <p className="text-[13.5px] font-medium">Reply by email</p>
+                  <p className="text-[13.5px] font-medium">{t('human.l3t')}</p>
                   <p className="mt-0.5 max-w-[320px] text-[12.5px] leading-relaxed text-muted">
-                    Every request gets a reply within one working day.
+                    {t('human.l3b')}
                   </p>
                 </div>
               </li>
@@ -179,12 +179,12 @@ export default function HumanTutorPage() {
           <section>
             {!configured ? (
               <div className="card p-8">
-                <p className="eyebrow">Not configured</p>
+                <p className="eyebrow">{t('tutor.notConfiguredEyebrow')}</p>
                 <h2 className="mt-3 font-display text-[28px] leading-tight">
-                  Add your Supabase keys to enable requests
+                  {t('human.notConfTitle')}
                 </h2>
                 <p className="mt-3 text-[13px] leading-relaxed text-muted">
-                  Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY, then redeploy.
+                  {t('human.notConfBody')}
                 </p>
               </div>
             ) : loading ? (
@@ -195,18 +195,17 @@ export default function HumanTutorPage() {
                   <LockKeyhole className="h-[18px] w-[18px]" aria-hidden />
                 </span>
                 <h2 className="mt-4 font-display text-[30px] leading-tight">
-                  Sign in to request a human tutor
+                  {t('human.signInTitle')}
                 </h2>
                 <p className="mt-3 max-w-[420px] text-[13.5px] leading-relaxed text-muted">
-                  Requests are tied to your verified account so the tutor can reply to the right
-                  person.
+                  {t('human.signInBody')}
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link href="/login" className="btn-dark px-5 py-2.5">
-                    Sign in
+                    {t('nav.signIn')}
                   </Link>
                   <Link href="/signup" className="btn-light px-5 py-2.5">
-                    Create account
+                    {t('footer.createAccount')}
                   </Link>
                 </div>
               </div>
@@ -216,18 +215,17 @@ export default function HumanTutorPage() {
                   <ShieldCheck className="h-[18px] w-[18px] text-[#8a6420]" aria-hidden />
                 </span>
                 <h2 className="mt-4 font-display text-[30px] leading-tight">
-                  Verify your email first
+                  {t('tutor.verifyTitle')}
                 </h2>
                 <p className="mt-3 max-w-[420px] text-[13.5px] leading-relaxed text-muted">
-                  We sent a confirmation link to {user.email}. Open it, then come back to request a
-                  human tutor.
+                  {t('human.verifyBody', { email: user.email ?? '' })}
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link href="/account" className="btn-dark px-5 py-2.5">
-                    Resend verification
+                    {t('tutor.resend')}
                   </Link>
                   <Link href="/papers" className="btn-light px-5 py-2.5">
-                    Browse papers
+                    {t('tutor.browse')}
                   </Link>
                 </div>
               </div>
@@ -239,16 +237,16 @@ export default function HumanTutorPage() {
                       <UserRound className="h-4 w-4" aria-hidden />
                     </span>
                     <div>
-                      <h2 className="font-display text-[22px] leading-none">Request a session</h2>
+                      <h2 className="font-display text-[22px] leading-none">{t('human.requestTitle')}</h2>
                       <p className="mt-1 text-[11.5px] text-muted">
-                        Tell the tutor what you are stuck on.
+                        {t('human.requestSub')}
                       </p>
                     </div>
                   </div>
 
                   <div className="mt-6 space-y-4">
                     <label className="block space-y-1.5 text-[12.5px] text-muted">
-                      <span>Subject</span>
+                      <span>{t('human.subject')}</span>
                       <select
                         value={subject}
                         onChange={(event) => setSubject(event.target.value)}
@@ -256,27 +254,27 @@ export default function HumanTutorPage() {
                       >
                         {subjects.map((item) => (
                           <option key={item} value={item}>
-                            {item}
+                            {t(`subj.${item}` as MessageKey)}
                           </option>
                         ))}
                       </select>
                     </label>
 
                     <label className="block space-y-1.5 text-[12.5px] text-muted">
-                      <span>Question or topic</span>
+                      <span>{t('human.question')}</span>
                       <textarea
                         required
                         rows={5}
                         value={question}
                         onChange={(event) => setQuestion(event.target.value)}
-                        placeholder="Paste the question, the paper reference, or describe what you want to work through."
+                        placeholder={t('human.questionPh')}
                         className="input resize-y"
                       />
                     </label>
 
                     <div className="grid gap-4 sm:grid-cols-2">
                       <label className="block space-y-1.5 text-[12.5px] text-muted">
-                        <span>Preferred time (optional)</span>
+                        <span>{t('human.preferred')}</span>
                         <input
                           type="datetime-local"
                           value={preferredAt}
@@ -285,7 +283,7 @@ export default function HumanTutorPage() {
                         />
                       </label>
                       <label className="block space-y-1.5 text-[12.5px] text-muted">
-                        <span>Contact email</span>
+                        <span>{t('human.contactEmail')}</span>
                         <input
                           type="email"
                           required
@@ -311,47 +309,53 @@ export default function HumanTutorPage() {
 
                   <button type="submit" disabled={busy} className="btn-dark mt-5 w-full py-3">
                     <Send className="h-4 w-4" aria-hidden />
-                    {busy ? 'Sending…' : 'Send request'}
+                    {busy ? t('human.sending') : t('human.send')}
                   </button>
                 </form>
 
                 <div className="mt-6">
                   <h3 className="text-[12px] font-medium uppercase tracking-[0.16em] text-muted">
-                    Your requests
+                    {t('human.yourRequests')}
                   </h3>
                   <div className="mt-3 divide-y divide-line/70 rounded-2xl border border-line bg-paper">
                     {requests === null ? (
-                      <p className="px-5 py-4 text-[12.5px] text-muted">Loading…</p>
+                      <p className="px-5 py-4 text-[12.5px] text-muted">{t('human.loading')}</p>
                     ) : requests.length === 0 ? (
                       <p className="px-5 py-4 text-[12.5px] text-muted">
-                        No requests yet. Your first one will appear here.
+                        {t('human.none')}
                       </p>
                     ) : (
                       requests.map((request) => (
                         <div key={request.id} className="px-5 py-3.5">
                           <div className="flex items-center justify-between gap-3">
-                            <p className="truncate text-[13px] font-medium">{request.subject}</p>
+                            <p className="truncate text-[13px] font-medium">
+                              {t(`subj.${request.subject}` as MessageKey)}
+                            </p>
                             <span
                               className={`shrink-0 rounded-full border px-2 py-0.5 text-[10.5px] capitalize ${
                                 statusStyles[request.status]
                               }`}
                             >
-                              {request.status}
+                              {t(`status.${request.status}` as MessageKey)}
                             </span>
                           </div>
                           <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-muted">
                             {request.question}
                           </p>
                           <p className="mt-1.5 text-[10.5px] text-muted/80">
-                            {new Date(request.created_at).toLocaleDateString(undefined, {
+                            {new Date(request.created_at).toLocaleDateString(locale, {
                               month: 'short',
                               day: 'numeric',
                             })}
                             {request.preferred_at
-                              ? ` · preferred ${new Date(request.preferred_at).toLocaleString(
-                                  undefined,
-                                  { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' },
-                                )}`
+                              ? t('human.preferredAt', {
+                                  time: new Date(request.preferred_at).toLocaleString(locale, {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  }),
+                                })
                               : ''}
                           </p>
                         </div>

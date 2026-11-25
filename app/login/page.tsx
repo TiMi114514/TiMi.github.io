@@ -7,9 +7,11 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/lib/supabase';
+import { useT } from '@/lib/i18n';
 
 export default function LoginPage() {
   const router = useRouter();
+  const t = useT();
   const { user, loading, isAdmin } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,7 +25,7 @@ export default function LoginPage() {
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!supabase) {
-      setError('Supabase is not configured for this deployment yet.');
+      setError(t('auth.notConfigured'));
       return;
     }
     setBusy(true);
@@ -35,7 +37,7 @@ export default function LoginPage() {
     if (signInError) {
       setError(
         /email not confirmed/i.test(signInError.message)
-          ? 'Your email is not confirmed yet. Open the verification link we sent you, then try again.'
+          ? t('login.notConfirmed')
           : signInError.message,
       );
       setBusy(false);
@@ -51,15 +53,15 @@ export default function LoginPage() {
       <Header />
       <main className="container-page flex min-h-[calc(100vh-72px)] items-start justify-center py-16">
         <div className="w-full max-w-[420px]">
-          <p className="eyebrow">Welcome back</p>
-          <h1 className="mt-3 font-display text-[42px] leading-none tracking-[-0.01em]">Sign in</h1>
+          <p className="eyebrow">{t('login.eyebrow')}</p>
+          <h1 className="mt-3 font-display text-[42px] leading-none tracking-[-0.01em]">{t('login.title')}</h1>
           <p className="mt-3 text-[13.5px] leading-relaxed text-muted">
-            Access the archive, the AI tutor and human tutors, grounded in your course material.
+            {t('login.body')}
           </p>
 
           <form onSubmit={submit} className="mt-8 space-y-4">
             <label className="block space-y-1.5 text-[12.5px] text-muted">
-              <span>Email</span>
+              <span>{t('auth.email')}</span>
               <input
                 type="email"
                 required
@@ -71,7 +73,7 @@ export default function LoginPage() {
               />
             </label>
             <label className="block space-y-1.5 text-[12.5px] text-muted">
-              <span>Password</span>
+              <span>{t('auth.password')}</span>
               <input
                 type="password"
                 required
@@ -79,7 +81,7 @@ export default function LoginPage() {
                 className="input"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="Your password"
+                placeholder={t('auth.passwordPh')}
               />
             </label>
 
@@ -88,7 +90,7 @@ export default function LoginPage() {
                 href="/forgot-password"
                 className="text-[12px] text-muted underline decoration-line underline-offset-4 transition-colors hover:text-ink hover:decoration-ink"
               >
-                Forgot password?
+                {t('login.forgot')}
               </Link>
             </div>
 
@@ -99,14 +101,14 @@ export default function LoginPage() {
             ) : null}
 
             <button type="submit" disabled={busy} className="btn-dark w-full py-3">
-              {busy ? 'Signing in…' : 'Sign in'}
+              {busy ? t('login.signingIn') : t('auth.signIn')}
             </button>
           </form>
 
           <p className="mt-6 text-[13px] text-muted">
-            New here?{' '}
+            {t('login.newHere')}{' '}
             <Link href="/signup" className="link-underline text-ink">
-              Create an account
+              {t('auth.createAccount')}
             </Link>
           </p>
         </div>

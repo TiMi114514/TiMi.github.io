@@ -1,4 +1,4 @@
-import type { Config } from 'tailwindcss';
+﻿import type { Config } from 'tailwindcss';
 
 const config: Config = {
   content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}', './lib/**/*.{ts,tsx}'],
@@ -13,8 +13,8 @@ const config: Config = {
         soft: '#efe8db',
       },
       fontFamily: {
-        sans: ['var(--font-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        display: ['var(--font-display)', 'Georgia', 'Times New Roman', 'serif'],
+        sans: ['var(--font-sans)', 'ui-sans-serif', 'system-ui', 'PingFang SC', 'Hiragino Sans', 'Microsoft YaHei', 'Noto Sans CJK SC', 'sans-serif'],
+        display: ['var(--font-display)', 'Georgia', 'Times New Roman', 'Songti SC', 'Noto Serif CJK SC', 'SimSun', 'serif'],
       },
       boxShadow: {
         card: '0 1px 0 rgba(22,21,15,0.03), 0 18px 40px -32px rgba(22,21,15,0.45)',

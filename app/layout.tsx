@@ -1,18 +1,19 @@
-import type { Metadata, Viewport } from 'next';
+﻿import type { Metadata, Viewport } from 'next';
 import { Inter, Source_Serif_4 } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/components/AuthProvider';
 import { PomodoroProvider } from '@/components/PomodoroProvider';
 import { AnalyticsTracker } from '@/components/AnalyticsTracker';
+import { I18nProvider } from '@/lib/i18n';
 
 const inter = Inter({
-  subsets: ['latin'],
+  subsets: ['latin', 'latin-ext', 'cyrillic'],
   variable: '--font-sans',
   display: 'swap',
 });
 
 const display = Source_Serif_4({
-  subsets: ['latin'],
+  subsets: ['latin', 'latin-ext', 'cyrillic'],
   style: ['normal', 'italic'],
   variable: '--font-display',
   display: 'swap',
@@ -38,14 +39,16 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${display.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${display.variable}`}>
       <body className="font-sans">
-        <AuthProvider>
-          <PomodoroProvider>
-            <AnalyticsTracker />
-            {children}
-          </PomodoroProvider>
-        </AuthProvider>
+        <I18nProvider>
+          <AuthProvider>
+            <PomodoroProvider>
+              <AnalyticsTracker />
+              {children}
+            </PomodoroProvider>
+          </AuthProvider>
+        </I18nProvider>
       </body>
     </html>
   );

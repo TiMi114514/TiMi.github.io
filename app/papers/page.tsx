@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Download, FileText, Search, ShieldCheck } from 'lucide-react';
 import { Header } from '@/components/Header';
@@ -17,25 +17,41 @@ import { downloadRagflowDocument, getRagflowConfig } from '@/lib/ragflow';
 import { getBrowserSessionId } from '@/lib/session';
 import { supabase } from '@/lib/supabase';
 import type { Paper } from '@/lib/types';
+import { useI18n, type MessageKey } from '@/lib/i18n';
+import en from '@/lib/i18n/en';
 
 const GUEST_DOWNLOAD_KEY = 'differential-quant.guest.lastDownload';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: 16 }, (_, index) => CURRENT_YEAR - index);
-const SEASONS = [
-  { code: 'm', label: 'March' },
-  { code: 's', label: 'June' },
-  { code: 'w', label: 'November' },
-] as const;
-const TYPES = [
-  { code: 'qp', label: 'Question paper' },
-  { code: 'ms', label: 'Mark scheme (answers)' },
-  { code: 'gt', label: 'Grade thresholds' },
-  { code: 'er', label: 'Examiner report' },
-  { code: 'ci', label: 'Confidential instructions' },
-  { code: 'in', label: 'Insert' },
-  { code: 'sf', label: 'Specimen paper' },
+const SEASONS: { code: 'm' | 's' | 'w'; label: MessageKey }[] = [
+  { code: 'm', label: 'season.m' },
+  { code: 's', label: 'season.s' },
+  { code: 'w', label: 'season.w' },
 ];
+const TYPES: { code: string; label: MessageKey }[] = [
+  { code: 'qp', label: 'type.qp' },
+  { code: 'ms', label: 'type.msLong' },
+  { code: 'gt', label: 'type.gt' },
+  { code: 'er', label: 'type.er' },
+  { code: 'ci', label: 'type.ci' },
+  { code: 'in', label: 'type.in' },
+  { code: 'sf', label: 'type.sf' },
+];
+
+function hasKey(key: string): key is MessageKey {
+  return Object.prototype.hasOwnProperty.call(en, key);
+}
+
+function renderTemplate(template: string, values: Record<string, React.ReactNode>) {
+  return template.split(/(\{\w+\})/).map((part, index) => {
+    const match = /^\{(\w+)\}$/.exec(part);
+    if (match && match[1] in values) {
+      return <React.Fragment key={index}>{values[match[1]]}</React.Fragment>;
+    }
+    return <React.Fragment key={index}>{part}</React.Fragment>;
+  });
+}
 
 function guestCanDownload(): boolean {
   try {
@@ -51,6 +67,7 @@ function guestCanDownload(): boolean {
 
 export default function PapersPage() {
   const { user, loading } = useAuth();
+  const { t, locale } = useI18n();
   const [preview, setPreview] = useState<ArchivePreviewData | null>(null);
   const [query, setQuery] = useState('');
   const [dataset, setDataset] = useState('All');
@@ -95,13 +112,11 @@ export default function PapersPage() {
       needle.length >= 2 || year !== 'All' || type !== 'All' || dataset !== 'All';
 
     if (!hasFilters) {
-      setNotice(
-        'Enter a file name, choose a subject, or pick a year or paper type to search.',
-      );
+      setNotice(t('papers.needFilter'));
       return;
     }
     if (season !== 'All' && year === 'All' && dataset === 'All') {
-      setNotice('Pick a year or a subject together with the exam season.');
+      setNotice(t('papers.seasonNeedsYear'));
       return;
     }
 
@@ -118,17 +133,17 @@ export default function PapersPage() {
       setResults(matches);
       setSearchedQuery(needle || 'Filters');
       const parts = [
-        dataset === 'All' ? 'all subjects' : preview?.datasets.find((item) => item.id === dataset)?.name,
+        dataset === 'All' ? t('papers.allSubjects') : preview?.datasets.find((item) => item.id === dataset)?.name,
         year === 'All' ? null : year,
-        season === 'All' ? null : SEASONS.find((item) => item.code === season)?.label,
-        type === 'All' ? null : TYPES.find((item) => item.code === type)?.label,
+        season === 'All' ? null : (() => { const found = SEASONS.find((item) => item.code === season); return found ? t(found.label) : null; })(),
+        type === 'All' ? null : (() => { const found = TYPES.find((item) => item.code === type); return found ? t(found.label) : null; })(),
       ].filter(Boolean);
       setSearchSummary(parts.join(' · '));
       if (matches.length === 0) {
-        setNotice('No file names match those filters.');
+        setNotice(t('papers.noMatchNotice'));
       }
     } catch {
-      setNotice('Search failed. Check the RAGFlow connection and try again.');
+      setNotice(t('papers.searchFailed'));
     } finally {
       setSearching(false);
     }
@@ -147,7 +162,7 @@ export default function PapersPage() {
   async function download(paper: Paper) {
     setNotice(null);
     if (!user && !guestCanDownload()) {
-      setNotice('Guests can download one paper per second. Please wait a moment and try again.');
+      setNotice(t('papers.guestWait'));
       return;
     }
 
@@ -161,7 +176,7 @@ export default function PapersPage() {
           paper.title.replace(/[\\/:*?"<>|]/g, '-'),
         );
       } else {
-        setNotice('This paper has no file attached.');
+        setNotice(t('papers.noFile'));
         return;
       }
 
@@ -188,7 +203,7 @@ export default function PapersPage() {
         }
       }
     } catch (caught) {
-      setNotice(caught instanceof Error ? caught.message : 'Download failed.');
+      setNotice(caught instanceof Error ? caught.message : t('papers.downloadFailed'));
     } finally {
       setBusyId(null);
     }
@@ -200,19 +215,20 @@ export default function PapersPage() {
       <main className="container-page py-14 sm:py-20">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
-            <p className="eyebrow">The archive</p>
+            <p className="eyebrow">{t('papers.eyebrow')}</p>
             <h1 className="mt-3 font-display text-[46px] leading-none tracking-[-0.01em] sm:text-[54px]">
-              Past papers
+              {t('papers.title')}
             </h1>
             <p className="mt-4 max-w-[600px] text-[14px] leading-relaxed text-muted">
-              A few papers are shown straight away. Search the full archive when you need a
-              specific file — file names are kept exactly as they are stored in RAGFlow.
+              {t('papers.intro')}
             </p>
           </div>
           {preview ? (
             <span className="rounded-full border border-line bg-paper px-3 py-1.5 text-[11px] text-muted">
-              {preview.totalDocuments.toLocaleString('en-US')} documents ·{' '}
-              {preview.datasets.filter((item) => item.count > 0).length} datasets
+              {t('papers.badge', {
+                docs: preview.totalDocuments.toLocaleString(locale),
+                sets: preview.datasets.filter((item) => item.count > 0).length,
+              })}
             </span>
           ) : null}
         </div>
@@ -221,8 +237,7 @@ export default function PapersPage() {
           <div className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-paper px-4 py-3 text-[13px]">
             <span className="flex items-center gap-2 text-muted">
               <ShieldCheck className="h-4 w-4 text-[#3f7d5a]" aria-hidden />
-              Free to browse and download — no account needed. Guests can download one paper per
-              second.
+              {t('papers.guestBanner')}
             </span>
           </div>
         ) : null}
@@ -238,9 +253,9 @@ export default function PapersPage() {
           className="mt-8 rounded-2xl border border-line bg-paper p-4 sm:p-5"
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-display text-[22px] leading-none">Search the full archive</h2>
+            <h2 className="font-display text-[22px] leading-none">{t('papers.searchTitle')}</h2>
             <span className="text-[11px] text-muted">
-              Only filename matches are fetched — no full dataset download
+              {t('papers.searchHint')}
             </span>
           </div>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -253,17 +268,17 @@ export default function PapersPage() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 className="input pl-10"
-                placeholder="File name, e.g. 9700_w19_ms_22 or 9990_m26"
-                aria-label="Search file names"
+                placeholder={t('papers.placeholder')}
+                aria-label={t('papers.searchAria')}
               />
             </div>
             <select
               value={dataset}
               onChange={(event) => setDataset(event.target.value)}
               className="input sm:w-[270px]"
-              aria-label="Choose dataset"
+              aria-label={t('papers.chooseDataset')}
             >
-              <option value="All">All datasets</option>
+              <option value="All">{t('papers.allDatasets')}</option>
               {(preview?.datasets ?? []).map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name} ({item.count})
@@ -271,7 +286,7 @@ export default function PapersPage() {
               ))}
             </select>
             <button type="submit" disabled={searching} className="btn-dark px-5 py-2.5">
-              {searching ? 'Searching…' : 'Search'}
+              {searching ? t('papers.searching') : t('papers.search')}
             </button>
           </div>
 
@@ -280,9 +295,9 @@ export default function PapersPage() {
               value={year}
               onChange={(event) => setYear(event.target.value)}
               className="input"
-              aria-label="Year"
+              aria-label={t('papers.yearAria')}
             >
-              <option value="All">All years</option>
+              <option value="All">{t('papers.allYears')}</option>
               {YEARS.map((item) => (
                 <option key={item} value={item}>
                   {item}
@@ -293,12 +308,12 @@ export default function PapersPage() {
               value={season}
               onChange={(event) => setSeason(event.target.value)}
               className="input"
-              aria-label="Exam season"
+              aria-label={t('papers.seasonAria')}
             >
-              <option value="All">All exam seasons</option>
+              <option value="All">{t('papers.allSeasons')}</option>
               {SEASONS.map((item) => (
                 <option key={item.code} value={item.code}>
-                  {item.label}
+                  {t(item.label)}
                 </option>
               ))}
             </select>
@@ -306,20 +321,21 @@ export default function PapersPage() {
               value={type}
               onChange={(event) => setType(event.target.value)}
               className="input"
-              aria-label="Paper type"
+              aria-label={t('papers.typeAria')}
             >
-              <option value="All">All paper types</option>
+              <option value="All">{t('papers.allTypes')}</option>
               {TYPES.map((item) => (
                 <option key={item.code} value={item.code}>
-                  {item.label}
+                  {t(item.label)}
                 </option>
               ))}
             </select>
           </div>
 
           <p className="mt-2 text-[11px] text-muted">
-            Year, exam season and paper type are matched from the file name. Mark schemes are the
-            answers; grade thresholds use <span className="font-mono">gt</span>.
+            {renderTemplate(t('papers.filterNote'), {
+              gt: <span className="font-mono">gt</span>,
+            })}
           </p>
         </form>
 
@@ -327,11 +343,11 @@ export default function PapersPage() {
           <section className="mt-10">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <p className="eyebrow">Featured</p>
-                <h2 className="mt-2 font-display text-[30px] leading-none">A few papers</h2>
+                <p className="eyebrow">{t('papers.featuredEyebrow')}</p>
+                <h2 className="mt-2 font-display text-[30px] leading-none">{t('papers.featuredTitle')}</h2>
               </div>
               <span className="text-[11.5px] text-muted">
-                Use search above for anything else
+                {t('papers.useSearch')}
               </span>
             </div>
 
@@ -343,9 +359,9 @@ export default function PapersPage() {
               </div>
             ) : preview.papers.length === 0 ? (
               <div className="mt-5 rounded-2xl border border-dashed border-line px-6 py-14 text-center">
-                <p className="font-display text-[22px]">The archive is unavailable right now.</p>
+                <p className="font-display text-[22px]">{t('papers.unavailable')}</p>
                 <p className="mt-2 text-[12.5px] text-muted">
-                  Check the RAGFlow connection from the admin settings.
+                  {t('papers.unavailableHint')}
                 </p>
               </div>
             ) : (
@@ -366,25 +382,25 @@ export default function PapersPage() {
           <section className="mt-10">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <p className="eyebrow">Search results</p>
+                <p className="eyebrow">{t('papers.resultsEyebrow')}</p>
                 <h2 className="mt-2 font-display text-[30px] leading-none">
-                  {searchedQuery === 'Filters' ? 'Filtered results' : `“${searchedQuery}”`}
+                  {searchedQuery === 'Filters' ? t('papers.filtered') : `“${searchedQuery}”`}
                 </h2>
                 <p className="mt-1 text-[12px] text-muted">
-                  {results.length} match{results.length === 1 ? '' : 'es'}
+                  {t('papers.matches', { n: results.length })}
                   {searchSummary ? ` · ${searchSummary}` : ''}
                 </p>
               </div>
               <button type="button" onClick={clearSearch} className="btn-light px-4 py-2">
-                Back to featured
+                {t('papers.back')}
               </button>
             </div>
 
             {results.length === 0 ? (
               <div className="mt-5 rounded-2xl border border-dashed border-line px-6 py-14 text-center">
-                <p className="font-display text-[22px]">No file names match.</p>
+                <p className="font-display text-[22px]">{t('papers.noMatchTitle')}</p>
                 <p className="mt-2 text-[12.5px] text-muted">
-                  Try a shorter prefix, or clear the dataset filter.
+                  {t('papers.noMatchHint')}
                 </p>
               </div>
             ) : (
@@ -394,13 +410,19 @@ export default function PapersPage() {
                     <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line pb-2">
                       <h3 className="font-display text-[23px] leading-tight">{name}</h3>
                       <span className="text-[11.5px] text-muted">
-                        {items.length} document{items.length === 1 ? '' : 's'}
+                        {t('papers.docs', { n: items.length })}
                       </span>
                     </div>
                     <div className="divide-y divide-line/60">
                       {items.map((paper) => {
                         const meta = parsePaperName(paper.title);
-                        const metaLabel = [meta.year, meta.season, meta.type]
+                        const seasonKey = meta.seasonCode ? `season.${meta.seasonCode}` : '';
+                        const typeKey = meta.typeCode ? `type.${meta.typeCode}` : '';
+                        const metaLabel = [
+                          meta.year,
+                          hasKey(seasonKey) ? t(seasonKey) : meta.season,
+                          hasKey(typeKey) ? t(typeKey) : meta.type,
+                        ]
                           .filter(Boolean)
                           .join(' · ');
                         return (
@@ -427,7 +449,7 @@ export default function PapersPage() {
                               className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-paper px-3 py-1.5 text-[11.5px] text-ink transition-colors hover:bg-cream disabled:opacity-50"
                             >
                               <Download className="h-3.5 w-3.5" aria-hidden />
-                              {busyId === paper.id ? 'Preparing…' : 'Download'}
+                              {busyId === paper.id ? t('card.preparing') : t('papers.download')}
                             </button>
                           </div>
                         );
@@ -444,14 +466,14 @@ export default function PapersPage() {
           <div className="flex items-start gap-3">
             <ShieldCheck className="mt-0.5 h-5 w-5 text-[#3f7d5a]" aria-hidden />
             <div>
-              <p className="font-display text-[20px]">Stuck on one of these?</p>
+              <p className="font-display text-[20px]">{t('papers.stuckTitle')}</p>
               <p className="mt-1 text-[12.5px] text-muted">
-                Ask the tutor about any question — it cites the paper and chapter it used.
+                {t('papers.stuckBody')}
               </p>
             </div>
           </div>
           <Link href="/tutor" className="btn-dark px-5 py-2.5">
-            Ask the tutor
+            {t('home.ask')}
           </Link>
         </div>
       </main>

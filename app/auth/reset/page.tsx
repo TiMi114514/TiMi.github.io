@@ -6,9 +6,11 @@ import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { supabase } from '@/lib/supabase';
+import { useT } from '@/lib/i18n';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
+  const t = useT();
   const [ready, setReady] = useState(false);
   const [expired, setExpired] = useState(false);
   const [password, setPassword] = useState('');
@@ -45,11 +47,11 @@ export default function ResetPasswordPage() {
     event.preventDefault();
     if (!supabase) return;
     if (password.length < 8) {
-      setError('Use at least 8 characters.');
+      setError(t('reset.short'));
       return;
     }
     if (password !== confirm) {
-      setError('The two passwords do not match.');
+      setError(t('reset.mismatch'));
       return;
     }
     setBusy(true);
@@ -72,41 +74,40 @@ export default function ResetPasswordPage() {
         <div className="w-full max-w-[440px]">
           {expired ? (
             <>
-              <h1 className="font-display text-[38px] leading-tight">This link has expired</h1>
+              <h1 className="font-display text-[38px] leading-tight">{t('reset.expiredTitle')}</h1>
               <p className="mt-3 text-[13.5px] leading-relaxed text-muted">
-                Reset links are single-use and short-lived. Request a fresh one and open it on this
-                device.
+                {t('reset.expiredBody')}
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <Link href="/forgot-password" className="btn-dark px-5 py-2.5">
-                  Request a new link
+                  {t('reset.requestNew')}
                 </Link>
                 <Link href="/login" className="btn-light px-5 py-2.5">
-                  Sign in
+                  {t('auth.signIn')}
                 </Link>
               </div>
             </>
           ) : !ready ? (
             <>
-              <h1 className="font-display text-[36px] leading-tight">Checking your link…</h1>
+              <h1 className="font-display text-[36px] leading-tight">{t('reset.checking')}</h1>
               <p className="mt-3 text-[13.5px] text-muted">
-                One moment while we verify the reset token.
+                {t('reset.checkingBody')}
               </p>
               <span className="mt-8 block h-1.5 w-40 animate-pulse rounded-full bg-soft" />
             </>
           ) : (
             <>
-              <p className="eyebrow">Choose a new password</p>
+              <p className="eyebrow">{t('reset.eyebrow')}</p>
               <h1 className="mt-3 font-display text-[42px] leading-none tracking-[-0.01em]">
-                Reset password
+                {t('reset.title')}
               </h1>
               <p className="mt-3 text-[13.5px] leading-relaxed text-muted">
-                Pick something you have not used before. You will be signed in automatically.
+                {t('reset.body')}
               </p>
 
               <form onSubmit={submit} className="mt-8 space-y-4">
                 <label className="block space-y-1.5 text-[12.5px] text-muted">
-                  <span>New password</span>
+                  <span>{t('reset.newPw')}</span>
                   <input
                     type="password"
                     required
@@ -115,11 +116,11 @@ export default function ResetPasswordPage() {
                     className="input"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    placeholder="At least 8 characters"
+                    placeholder={t('auth.atLeast8')}
                   />
                 </label>
                 <label className="block space-y-1.5 text-[12.5px] text-muted">
-                  <span>Confirm new password</span>
+                  <span>{t('reset.confirm')}</span>
                   <input
                     type="password"
                     required
@@ -128,7 +129,7 @@ export default function ResetPasswordPage() {
                     className="input"
                     value={confirm}
                     onChange={(event) => setConfirm(event.target.value)}
-                    placeholder="Repeat the password"
+                    placeholder={t('reset.confirmPh')}
                   />
                 </label>
 
@@ -139,7 +140,7 @@ export default function ResetPasswordPage() {
                 ) : null}
 
                 <button type="submit" disabled={busy} className="btn-dark w-full py-3">
-                  {busy ? 'Saving…' : 'Save new password'}
+                  {busy ? t('reset.saving') : t('reset.save')}
                 </button>
               </form>
             </>

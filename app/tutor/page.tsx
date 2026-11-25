@@ -12,27 +12,17 @@ import { Footer } from '@/components/Footer';
 import { TutorWorkspace } from '@/components/TutorWorkspace';
 import { TutorTabs } from '@/components/TutorTabs';
 import { useAuth } from '@/components/AuthProvider';
+import { useT } from '@/lib/i18n';
 
 const features = [
-  {
-    icon: BookOpen,
-    title: 'Grounded in your course',
-    body: 'Answers are drawn from the indexed study material, with the source shown.',
-  },
-  {
-    icon: MessageSquareText,
-    title: 'Ask in plain language',
-    body: 'Paste a question, a diagram description, or ask for a worked solution step by step.',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Sources you can check',
-    body: 'Every reply lists the chapters and past papers it used, so you can verify it.',
-  },
-];
+  { icon: BookOpen, title: 'home.f1t', body: 'home.f1b' },
+  { icon: MessageSquareText, title: 'home.f2t', body: 'home.f2b' },
+  { icon: ShieldCheck, title: 'home.f3t', body: 'home.f3b' },
+] as const;
 
 export default function TutorPage() {
   const { user, loading, verified, configured } = useAuth();
+  const t = useT();
 
   return (
     <div>
@@ -40,17 +30,16 @@ export default function TutorPage() {
       <main className="container-page py-12 sm:py-16">
         <div className="mb-7 flex flex-wrap items-center justify-between gap-3">
           <TutorTabs active="ai" />
-          <p className="text-[12px] text-muted">Instant answers from your course material</p>
+          <p className="text-[12px] text-muted">{t('tutor.sub')}</p>
         </div>
         <div className="grid gap-10 lg:grid-cols-[0.78fr_1.22fr] lg:items-start">
           <aside>
-            <p className="eyebrow">AI tutor</p>
+            <p className="eyebrow">{t('tutor.eyebrow')}</p>
             <h1 className="mt-4 max-w-[370px] font-display text-[40px] leading-[0.98] tracking-[-0.01em] sm:text-[46px]">
-              Stuck at 11pm? Ask it like you&apos;d ask a tutor.
+              {t('tutor.title')}
             </h1>
             <p className="mt-5 max-w-[380px] text-[14px] leading-relaxed text-muted">
-              The AI tutor runs on your RAGFlow knowledge base, so the explanations match how the
-              course actually teaches it.
+              {t('tutor.body')}
             </p>
 
             <ul className="mt-8 space-y-5">
@@ -60,9 +49,9 @@ export default function TutorPage() {
                     <feature.icon className="h-4 w-4" aria-hidden />
                   </span>
                   <div>
-                    <p className="text-[13.5px] font-medium">{feature.title}</p>
+                    <p className="text-[13.5px] font-medium">{t(feature.title)}</p>
                     <p className="mt-0.5 max-w-[320px] text-[12.5px] leading-relaxed text-muted">
-                      {feature.body}
+                      {t(feature.body)}
                     </p>
                   </div>
                 </li>
@@ -73,14 +62,12 @@ export default function TutorPage() {
           <section>
             {!configured ? (
               <div className="card p-8">
-                <p className="eyebrow">Not configured</p>
+                <p className="eyebrow">{t('tutor.notConfiguredEyebrow')}</p>
                 <h2 className="mt-3 font-display text-[30px] leading-tight">
-                  Add your Supabase keys to enable accounts
+                  {t('tutor.notConfiguredTitle')}
                 </h2>
                 <p className="mt-3 max-w-[440px] text-[13px] leading-relaxed text-muted">
-                  This deployment is missing NEXT_PUBLIC_SUPABASE_URL and
-                  NEXT_PUBLIC_SUPABASE_ANON_KEY. Set them in your environment (or GitHub Actions
-                  variables) and redeploy.
+                  {t('tutor.notConfiguredBody')}
                 </p>
               </div>
             ) : loading ? (
@@ -91,18 +78,17 @@ export default function TutorPage() {
                   <LockKeyhole className="h-[18px] w-[18px]" aria-hidden />
                 </span>
                 <h2 className="mt-4 font-display text-[32px] leading-tight">
-                  Sign in to ask the tutor
+                  {t('tutor.signInTitle')}
                 </h2>
                 <p className="mt-3 max-w-[420px] text-[13.5px] leading-relaxed text-muted">
-                  The tutor uses your email-verified account so answers stay tied to your course
-                  access. Browsing the archive stays free.
+                  {t('tutor.signInBody')}
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link href="/login" className="btn-dark px-5 py-2.5">
-                    Sign in
+                    {t('auth.signIn')}
                   </Link>
                   <Link href="/signup" className="btn-light px-5 py-2.5">
-                    Create account
+                    {t('signup.create')}
                   </Link>
                 </div>
               </div>
@@ -112,18 +98,17 @@ export default function TutorPage() {
                   <ShieldCheck className="h-[18px] w-[18px] text-[#8a6420]" aria-hidden />
                 </span>
                 <h2 className="mt-4 font-display text-[32px] leading-tight">
-                  Verify your email first
+                  {t('tutor.verifyTitle')}
                 </h2>
                 <p className="mt-3 max-w-[420px] text-[13.5px] leading-relaxed text-muted">
-                  We sent a confirmation link to {user.email}. Open it, then come back — verified
-                  accounts get the tutor and downloads.
+                  {t('tutor.verifyBody', { email: user.email ?? '' })}
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link href="/account" className="btn-dark px-5 py-2.5">
-                    Resend verification
+                    {t('tutor.resend')}
                   </Link>
                   <Link href="/papers" className="btn-light px-5 py-2.5">
-                    Browse papers
+                    {t('tutor.browse')}
                   </Link>
                 </div>
               </div>
@@ -132,8 +117,7 @@ export default function TutorPage() {
             )}
 
             <p className="mt-3 text-[11.5px] leading-relaxed text-muted">
-              Answers are generated from your knowledge base. Always check the cited source before
-              relying on a result.
+              {t('tutor.disclaimer')}
             </p>
           </section>
         </div>

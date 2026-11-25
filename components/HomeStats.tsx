@@ -1,9 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { Download } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { formatNumber } from '@/lib/analytics';
+import { useT } from '@/lib/i18n';
+
+function renderTemplate(template: string, slots: Record<string, ReactNode>): ReactNode {
+  return template.split(/(\{\w+\})/).map((part, i) => {
+    const match = /^\{(\w+)\}$/.exec(part);
+    if (match && match[1] in slots) return <Fragment key={i}>{slots[match[1]]}</Fragment>;
+    return <Fragment key={i}>{part}</Fragment>;
+  });
+}
 
 type HomeStatsData = {
   download_users: number;
@@ -12,6 +21,7 @@ type HomeStatsData = {
 };
 
 export function HomeStats() {
+  const t = useT();
   const [stats, setStats] = useState<HomeStatsData | null>(null);
 
   useEffect(() => {
@@ -46,15 +56,18 @@ export function HomeStats() {
           <Download className="h-4 w-4" aria-hidden />
         </span>
         <p className="text-[13px] leading-relaxed text-muted">
-          In the last 30 days,{' '}
-          <span className="font-display text-[21px] leading-none text-ink">
-            {stats ? formatNumber(stats.download_users) : '—'}
-          </span>{' '}
-          {stats?.download_users === 1 ? 'user' : 'users'} downloaded{' '}
-          <span className="font-medium text-ink">
-            {stats ? formatNumber(stats.download_files) : '—'}
-          </span>{' '}
-          {stats?.download_files === 1 ? 'file' : 'files'}.
+          {renderTemplate(t('stats.downloads'), {
+            users: (
+              <span className="font-display text-[21px] leading-none text-ink">
+                {stats ? formatNumber(stats.download_users) : '—'}
+              </span>
+            ),
+            files: (
+              <span className="font-medium text-ink">
+                {stats ? formatNumber(stats.download_files) : '—'}
+              </span>
+            ),
+          })}
         </p>
       </div>
 
@@ -64,10 +77,13 @@ export function HomeStats() {
           <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#22c55e]" />
         </span>
         <p className="text-[13px] leading-relaxed text-muted">
-          <span className="font-display text-[21px] leading-none text-ink">
-            {stats ? formatNumber(stats.live_learners) : '—'}
-          </span>{' '}
-          {stats?.live_learners === 1 ? 'learner' : 'learners'} online now.
+          {renderTemplate(t('stats.online'), {
+            n: (
+              <span className="font-display text-[21px] leading-none text-ink">
+                {stats ? formatNumber(stats.live_learners) : '—'}
+              </span>
+            ),
+          })}
         </p>
       </div>
     </div>

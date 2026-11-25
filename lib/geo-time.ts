@@ -1,24 +1,29 @@
 /**
- * Resolves the visitor's local timezone from their public IP address.
+ * Resolves the visitor's region (province / state + city) and timezone from
+ * their public IP address.
  *
- * The site is a fully static export, so there is no server to read the IP from
- * the request. Instead the browser asks a public geolocation service (ipapi.co
- * first, ipwho.is as a fallback) which returns a timezone for the caller's IP.
- * The result is cached in localStorage for 6 hours so repeat visits do not hit
- * the providers again. If both providers fail (offline, blocked, rate limit)
- * we fall back to the device timezone so the clock never breaks.
+ * The site is a static export, so the browser asks public geolocation services
+ * directly. Place names are requested in the active UI language where the
+ * provider supports it (ipip.net gives simplified Chinese; ipwho.is supports
+ * zh / ja / ru / fr / de …). Results are cached per language for 6 hours.
  *
- * No IP address is ever sent to our own servers or stored anywhere but the
- * visitor's browser cache (and only the derived timezone is cached).
+ * The device timezone is never shown. If every provider fails we only show the
+ * GMT offset without a place.
  */
 
+import type { Locale } from './i18n';
+
 export type GeoZone = {
-  timeZone: string;
-  place?: string;
-  source: 'ip' | 'browser';
+  /** IANA timezone resolved from the IP, if any. */
+  timeZone?: string;
+  region?: string;
+  city?: string;
+  country?: string;
+  countryCode?: string;
+  source: 'ip' | 'none';
 };
 
-const CACHE_KEY = 'differential-quant.geo.tz.v1';
+const CACHE_PREFIX = 'alevel-hub.geo.v2.';
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
 function isValidTimeZone(value: unknown): value is string {
@@ -31,44 +36,39 @@ function isValidTimeZone(value: unknown): value is string {
   }
 }
 
-export function browserTimeZone(): string {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-  } catch {
-    return 'UTC';
-  }
+function clean(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const text = value
+    .trim()
+    // ipwho.is English names: "Shandong Sheng", "Beijing Shi"
+    .replace(/\s+(Sheng|Shi|Zizhiqu|Province)$/i, '')
+    .trim();
+  return text || undefined;
 }
 
-function readCache(): GeoZone | null {
+function readCache(locale: Locale): GeoZone | null {
   try {
-    const raw = window.localStorage.getItem(CACHE_KEY);
+    const raw = window.localStorage.getItem(CACHE_PREFIX + locale);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<GeoZone & { at: number }>;
+    const parsed = JSON.parse(raw) as GeoZone & { at?: number };
     if (parsed.source !== 'ip' || typeof parsed.at !== 'number') return null;
     if (Date.now() - parsed.at > CACHE_TTL_MS) return null;
-    if (!isValidTimeZone(parsed.timeZone)) return null;
-    return {
-      timeZone: parsed.timeZone,
-      place: typeof parsed.place === 'string' ? parsed.place : undefined,
-      source: 'ip',
-    };
+    if (parsed.timeZone && !isValidTimeZone(parsed.timeZone)) return null;
+    return parsed;
   } catch {
     return null;
   }
 }
 
-function writeCache(zone: GeoZone): void {
+function writeCache(locale: Locale, zone: GeoZone): void {
   try {
-    window.localStorage.setItem(
-      CACHE_KEY,
-      JSON.stringify({ timeZone: zone.timeZone, place: zone.place, source: zone.source, at: Date.now() }),
-    );
+    window.localStorage.setItem(CACHE_PREFIX + locale, JSON.stringify({ ...zone, at: Date.now() }));
   } catch {
     /* storage may be unavailable */
   }
 }
 
-async function fetchJson(url: string, timeoutMs = 4000): Promise<Record<string, any>> {
+async function fetchJson(url: string, timeoutMs = 4500): Promise<Record<string, any>> {
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -80,51 +80,122 @@ async function fetchJson(url: string, timeoutMs = 4000): Promise<Record<string, 
   }
 }
 
-type ZoneAttempt = () => Promise<GeoZone | null>;
+/** ipwho.is language codes. zh-CN returns traditional-style names, which suit zh-TW. */
+const IPWHO_LANG: Record<Locale, string> = {
+  en: 'en',
+  'zh-CN': 'zh-CN',
+  'zh-TW': 'zh-CN',
+  ru: 'ru',
+  fr: 'fr',
+  de: 'de',
+  it: 'en',
+  ja: 'ja',
+};
 
-const attempts: ZoneAttempt[] = [
-  async () => {
-    const data = await fetchJson('https://ipapi.co/json/');
-    const timeZone = data?.timezone;
-    if (!isValidTimeZone(timeZone)) return null;
-    const place = [data?.city, data?.country_name].filter(Boolean).join(', ') || undefined;
-    return { timeZone, place, source: 'ip' };
-  },
-  async () => {
-    const data = await fetchJson('https://ipwho.is/');
-    const timeZone =
-      data?.time_zone?.name ??
-      data?.timezone?.name ??
-      (typeof data?.timezone === 'string' ? data.timezone : undefined);
-    if (!isValidTimeZone(timeZone)) return null;
-    const place = [data?.city, data?.country].filter(Boolean).join(', ') || undefined;
-    return { timeZone, place, source: 'ip' };
-  },
-];
-
-export async function resolveGeoZone(): Promise<GeoZone> {
-  const cached = readCache();
-  if (cached) return cached;
-
-  for (const attempt of attempts) {
-    try {
-      const zone = await attempt();
-      if (zone) {
-        writeCache(zone);
-        return zone;
-      }
-    } catch {
-      /* provider unreachable or rate limited — try the next one */
-    }
-  }
-
-  return { timeZone: browserTimeZone(), source: 'browser' };
+async function fromIpwho(locale: Locale): Promise<GeoZone | null> {
+  const data = await fetchJson(`https://ipwho.is/?lang=${IPWHO_LANG[locale]}`);
+  if (data?.success === false) return null;
+  const timeZone = data?.timezone?.id;
+  return {
+    timeZone: isValidTimeZone(timeZone) ? timeZone : undefined,
+    region: clean(data?.region),
+    city: clean(data?.city),
+    country: clean(data?.country),
+    countryCode: typeof data?.country_code === 'string' ? data.country_code : undefined,
+    source: 'ip',
+  };
 }
 
-export function zoneOffsetLabel(timeZone: string, date: Date = new Date()): string {
+/** ipip.net: simplified Chinese names, no timezone. data.location = [国家, 省, 市, '', ISP] */
+async function fromIpip(): Promise<GeoZone | null> {
+  const data = await fetchJson('https://myip.ipip.net/json');
+  const location = data?.data?.location;
+  if (!Array.isArray(location) || !location[0]) return null;
+  const [country, region, city] = location as string[];
+  const isChina = country === '中国';
+  const special: Record<string, string> = {
+    香港: 'Asia/Hong_Kong',
+    澳门: 'Asia/Macau',
+    台湾: 'Asia/Taipei',
+  };
+  return {
+    timeZone: isChina ? (special[region] ?? 'Asia/Shanghai') : undefined,
+    region: clean(region),
+    city: clean(city),
+    country: clean(country),
+    countryCode: isChina ? 'CN' : undefined,
+    source: 'ip',
+  };
+}
+
+async function fromIpinfo(): Promise<GeoZone | null> {
+  const data = await fetchJson('https://ipinfo.io/json');
+  const timeZone = data?.timezone;
+  return {
+    timeZone: isValidTimeZone(timeZone) ? timeZone : undefined,
+    region: clean(data?.region),
+    city: clean(data?.city),
+    country: clean(data?.country),
+    countryCode: typeof data?.country === 'string' ? data.country : undefined,
+    source: 'ip',
+  };
+}
+
+function hasPlace(zone: GeoZone | null): zone is GeoZone {
+  return Boolean(zone && (zone.region || zone.city || zone.country));
+}
+
+const inflight = new Map<Locale, Promise<GeoZone>>();
+
+export function resolveGeoZone(locale: Locale): Promise<GeoZone> {
+  const cached = readCache(locale);
+  if (cached) return Promise.resolve(cached);
+  const pending = inflight.get(locale);
+  if (pending) return pending;
+
+  const promise = (async (): Promise<GeoZone> => {
+    const chain: Array<() => Promise<GeoZone | null>> =
+      locale === 'zh-CN'
+        ? [fromIpip, () => fromIpwho(locale), fromIpinfo]
+        : [() => fromIpwho(locale), fromIpinfo];
+
+    let found: GeoZone | null = null;
+    for (const attempt of chain) {
+      try {
+        const zone = await attempt();
+        if (hasPlace(zone)) {
+          found = zone;
+          break;
+        }
+      } catch {
+        /* provider unreachable or rate limited — try the next one */
+      }
+    }
+
+    if (found && !found.timeZone) {
+      // ipip.net outside China gives no timezone; borrow one from ipwho.is.
+      try {
+        const extra = await fromIpwho('en');
+        if (extra?.timeZone) found = { ...found, timeZone: extra.timeZone };
+      } catch {
+        /* keep the place without a timezone */
+      }
+    }
+
+    if (!found) return { source: 'none' };
+    writeCache(locale, found);
+    return found;
+  })().finally(() => inflight.delete(locale));
+
+  inflight.set(locale, promise);
+  return promise;
+}
+
+/** "GMT+8", "GMT-3:30", "GMT". Uses the IP timezone when known. */
+export function zoneOffsetLabel(timeZone?: string, date: Date = new Date()): string {
   try {
     const parts = new Intl.DateTimeFormat('en-GB', {
-      timeZone,
+      ...(timeZone ? { timeZone } : {}),
       timeZoneName: 'shortOffset',
     }).formatToParts(date);
     return parts.find((part) => part.type === 'timeZoneName')?.value ?? '';
@@ -133,15 +204,26 @@ export function zoneOffsetLabel(timeZone: string, date: Date = new Date()): stri
   }
 }
 
-export function zoneLabel(zone: GeoZone | null): string {
-  if (!zone) return 'Local time';
-  const where = zone.place ?? zone.timeZone.replace(/_/g, ' ');
-  const offset = zoneOffsetLabel(zone.timeZone);
-  return offset ? `${where} · ${offset}` : where;
+const CJK_LOCALES: Locale[] = ['zh-CN', 'zh-TW', 'ja'];
+
+/** Region + city, e.g. "山东 济南" or "Jinan, Shandong". Falls back to the country. */
+export function placeLabel(zone: GeoZone | null, locale: Locale): string {
+  if (!zone || zone.source !== 'ip') return '';
+  const parts: string[] = [];
+  for (const part of [zone.region, zone.city]) {
+    if (!part) continue;
+    // "北京" / "北京市", "Beijing" / "Beijing": skip duplicates
+    const bare = part.replace(/[市省]$/, '');
+    if (parts.some((existing) => existing.replace(/[市省]$/, '') === bare)) continue;
+    parts.push(part);
+  }
+  if (parts.length === 0) return zone.country ?? '';
+  return CJK_LOCALES.includes(locale) ? parts.join(' ') : parts.reverse().join(', ');
 }
 
-export function zoneSourceNote(zone: GeoZone | null): string {
-  if (!zone) return 'Looking up your timezone from your IP address…';
-  if (zone.source === 'ip') return `Matched from your IP address — ${zoneLabel(zone)}.`;
-  return `IP lookup unavailable, using your device timezone — ${zoneLabel(zone)}.`;
+/** "山东 济南 · GMT+8" or just "GMT+8" when no place is known. */
+export function zoneLabel(zone: GeoZone | null, locale: Locale): string {
+  const place = placeLabel(zone, locale);
+  const offset = zoneOffsetLabel(zone?.timeZone);
+  return [place, offset].filter(Boolean).join(' · ');
 }

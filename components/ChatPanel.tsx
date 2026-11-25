@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -19,6 +19,7 @@ import {
   retrieveCitations,
   type ChatMessage,
 } from '@/lib/ragflow';
+import { useT } from '@/lib/i18n';
 
 type UiMessage = {
   role: 'user' | 'assistant';
@@ -26,11 +27,7 @@ type UiMessage = {
   citations?: string[];
 };
 
-const opening: UiMessage = {
-  role: 'assistant',
-  content:
-    'Ask me anything from your course material — a past paper question, a definition you want unpacked, or a full worked solution. I answer from the knowledge base and list the sources I used.',
-};
+const STOPPED = 'Stopped.';
 
 export function ChatPanel({
   chatId,
@@ -39,7 +36,13 @@ export function ChatPanel({
   chatId?: string;
   datasetIds?: string[];
 }) {
-  const [messages, setMessages] = useState<UiMessage[]>([opening]);
+  const t = useT();
+  const opening = useMemo<UiMessage>(
+    () => ({ role: 'assistant', content: t('chat.opening') }),
+    [t],
+  );
+  const [conversation, setMessages] = useState<UiMessage[]>([]);
+  const messages = useMemo(() => [opening, ...conversation], [opening, conversation]);
   const [history, setHistory] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -133,7 +136,7 @@ export function ChatPanel({
         citations = await retrieveCitations(baseConfig, question, activeDatasets);
       }
 
-      const finalContent = result.content || answer || 'I could not produce an answer this time.';
+      const finalContent = result.content || answer || t('chat.noAnswer');
       setMessages((prev) => {
         const copy = [...prev];
         const last = copy[copy.length - 1];
@@ -150,18 +153,21 @@ export function ChatPanel({
     } catch (caught) {
       const message =
         caught instanceof DOMException && caught.name === 'AbortError'
-          ? 'Stopped.'
+          ? STOPPED
           : caught instanceof Error
             ? caught.message
-            : 'Something went wrong talking to RAGFlow.';
-      if (message !== 'Stopped.') setError(message);
+            : t('chat.error');
+      if (message !== STOPPED) setError(message);
       setMessages((prev) => {
         const copy = [...prev];
         const last = copy[copy.length - 1];
         if (last?.role === 'assistant' && !last.content) {
           copy[copy.length - 1] = {
             role: 'assistant',
-            content: message === 'Stopped.' ? '_Stopped._' : `**Request failed.** ${message}`,
+            content:
+              message === STOPPED
+                ? `_${t('chat.stopped')}_`
+                : `**${t('chat.failed')}** ${message}`,
           };
         }
         return copy;
@@ -179,7 +185,7 @@ export function ChatPanel({
   function reset() {
     abortRef.current?.abort();
     setHistory([]);
-    setMessages([opening]);
+    setMessages([]);
     setError(null);
     setInput('');
   }
@@ -189,21 +195,21 @@ export function ChatPanel({
       <div className="flex items-center justify-between gap-3 border-b border-line/80 px-5 py-3.5">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4" aria-hidden />
-          <span className="font-display text-[17px]">Tutor session</span>
+          <span className="font-display text-[17px]">{t('chat.title')}</span>
         </div>
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1.5 text-[11.5px] text-muted">
             <span
               className={`h-1.5 w-1.5 rounded-full ${connected ? 'bg-[#3f7d5a]' : 'bg-[#b4543f]'}`}
             />
-            {connected ? 'knowledge base connected' : 'tutor unavailable'}
+            {connected ? t('chat.connected') : t('chat.unavailable')}
           </span>
           <button
             type="button"
             onClick={toggleFullscreen}
             className="text-muted transition-colors hover:text-ink"
-            aria-label={fullscreen ? 'Exit full screen' : 'Full screen'}
-            title={fullscreen ? 'Exit full screen' : 'Full screen'}
+            aria-label={fullscreen ? t('chat.exitFullscreen') : t('chat.fullscreen')}
+            title={fullscreen ? t('chat.exitFullscreen') : t('chat.fullscreen')}
           >
             {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
@@ -211,8 +217,8 @@ export function ChatPanel({
             type="button"
             onClick={reset}
             className="text-muted transition-colors hover:text-ink"
-            aria-label="New conversation"
-            title="New conversation"
+            aria-label={t('chat.new')}
+            title={t('chat.new')}
           >
             <RotateCcw className="h-4 w-4" />
           </button>
@@ -237,7 +243,7 @@ export function ChatPanel({
                 ) : (
                   <span className="inline-flex items-center gap-1.5 text-[13px] text-muted">
                     <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-muted" />
-                    Reading your course material…
+                    {t('chat.reading')}
                   </span>
                 )}
                 {message.citations && message.citations.length > 0 ? (
@@ -277,22 +283,22 @@ export function ChatPanel({
         <input
           value={input}
           onChange={(event) => setInput(event.target.value)}
-          placeholder={busy ? 'Answering…' : 'Ask a follow-up…'}
+          placeholder={busy ? t('chat.answering') : t('chat.followUp')}
           className="input border-transparent bg-transparent focus:ring-0"
           disabled={busy}
-          aria-label="Your question"
+          aria-label={t('chat.yourQuestion')}
         />
         {busy ? (
           <button type="button" onClick={stop} className="btn-outline px-3 py-2">
             <Square className="h-3.5 w-3.5" aria-hidden />
-            Stop
+            {t('chat.stop')}
           </button>
         ) : (
           <button
             type="submit"
             disabled={!input.trim()}
             className="btn-dark h-10 w-10 shrink-0 p-0"
-            aria-label="Send question"
+            aria-label={t('chat.send')}
           >
             <ArrowUp className="h-4 w-4" />
           </button>

@@ -23,6 +23,7 @@ export function formatClock(totalSeconds: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`;
 }
 
+/** Wall clock in the IP timezone; without one, the GMT label beside it still matches. */
 export function formatTime(date: Date, timeZone?: string): string {
   return date.toLocaleTimeString(
     'en-GB',
