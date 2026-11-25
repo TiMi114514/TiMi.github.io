@@ -720,3 +720,8 @@ create policy "email_events_read_admin"
   on public.email_events for select
   to authenticated
   using (public.is_admin());
+
+-- ============================================================
+-- Admin data API v1 (live visitors, unified logs, security, resource registry)
+-- lives in supabase/migrations/20261125_admin_api_v1.sql — run it after this file.
+-- ============================================================

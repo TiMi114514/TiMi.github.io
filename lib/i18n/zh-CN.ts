@@ -1,4 +1,4 @@
-﻿import type { Messages } from './en';
+import type { Messages } from './en';
 
 const messages: Messages = {
   "nav.papers": "历年真题",
@@ -241,7 +241,7 @@ const messages: Messages = {
   "pomo.localTitle": "你的本地时间",
   "pomo.locating": "正在根据 IP 地址定位…",
   "pomo.localTime": "本地时间",
-  "pomo.localNote": "你的所在地区通过公共地理定位服务（ipwho.is、ipip.net 或 ipinfo.io）根据 IP 地址查询，并在本浏览器中缓存 6 小时。你的 IP 绝不会发送到我们的服务器。",
+  "pomo.localNote": "你的所在地区通过公共地理定位服务（ipwho.is、ipip.net 或 ipinfo.io）根据 IP 地址查询，并在本浏览器中缓存 6 小时。出于安全和访问统计目的，本站会记录你的 IP 地址、地区、浏览器信息和设备指纹。",
 
   "login.eyebrow": "欢迎回来",
   "login.title": "登录",

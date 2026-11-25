@@ -4,6 +4,15 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Bot, ExternalLink, RefreshCw } from 'lucide-react';
 import { CopyButton } from '@/components/admin/CopyButton';
+import { ResourceRegistry, type FieldDef } from '@/components/admin/ResourceRegistry';
+
+const agentFields: FieldDef[] = [
+  { key: 'provider', label: 'Provider', type: 'select', options: ['ragflow', 'openai', 'deepseek', 'anthropic', 'qwen', 'other'], column: true },
+  { key: 'model', label: 'Model', placeholder: 'deepseek-chat, qwen-max…', column: true },
+  { key: 'endpoint', label: 'Endpoint', type: 'url', placeholder: 'https://…', column: true },
+  { key: 'datasets', label: 'Knowledge bases', type: 'list', placeholder: 'Biology 9700, Chemistry 9701' },
+  { key: 'purpose', label: 'Purpose', placeholder: 'What this agent is for' },
+];
 import { fetchArchivePreview, getRagflowConfig, listRagflowAssistants, type RagflowAssistant } from '@/lib/ragflow';
 
 export default function AdminAgentsPage() {
@@ -150,6 +159,13 @@ export default function AdminAgentsPage() {
           ))
         )}
       </div>
+
+      <h2 className="mt-8 text-[16px] font-semibold">Agent registry</h2>
+      <p className="mt-1 text-[12px] text-[#71717a]">
+        Document every AI agent the project uses — RAGFlow assistants above are discovered automatically; add other
+        models, prompts or bots here so the team has one list.
+      </p>
+      <ResourceRegistry kind="agent" noun="agent" fields={agentFields} forbidden={['api_key', 'token', 'secret']} />
 
       <section className="mt-4 rounded-xl border border-[#e4e4e7] bg-white p-5">
         <h2 className="text-[13px] font-semibold">Adding an assistant</h2>

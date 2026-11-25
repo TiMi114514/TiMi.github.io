@@ -7,6 +7,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/lib/supabase';
+import { logSecurityEvent } from '@/lib/security-events';
 import { useT } from '@/lib/i18n';
 
 export default function LoginPage() {
@@ -35,6 +36,7 @@ export default function LoginPage() {
       password,
     });
     if (signInError) {
+      logSecurityEvent('sign_in_failed', email.trim(), { reason: signInError.message });
       setError(
         /email not confirmed/i.test(signInError.message)
           ? t('login.notConfirmed')
@@ -44,6 +46,7 @@ export default function LoginPage() {
       return;
     }
 
+    logSecurityEvent('sign_in', email.trim());
     const { data: adminFlag } = await supabase.rpc('is_admin');
     router.replace(adminFlag === true ? '/admin' : '/account');
   }

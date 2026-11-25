@@ -8,6 +8,7 @@ import { Footer } from '@/components/Footer';
 import { useAuth } from '@/components/AuthProvider';
 import { forwardTeacherApplication } from '@/lib/teacher-email';
 import { appUrl, supabase } from '@/lib/supabase';
+import { logSecurityEvent } from '@/lib/security-events';
 import { useT } from '@/lib/i18n';
 
 export default function SignupPage() {
@@ -87,6 +88,8 @@ export default function SignupPage() {
       setBusy(false);
       return;
     }
+
+    logSecurityEvent('sign_up', email.trim(), { teacher: applyTeacher });
 
     if (applyTeacher) {
       let documentPath: string | null = null;

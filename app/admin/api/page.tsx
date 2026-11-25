@@ -5,6 +5,7 @@ import { KeyRound, Server } from 'lucide-react';
 import { ConnectionTests } from '@/components/admin/ConnectionTests';
 import { CopyButton } from '@/components/admin/CopyButton';
 import { getRagflowConfig, type RagflowConfig } from '@/lib/ragflow';
+import { ADMIN_ENDPOINTS } from '@/lib/admin-api';
 
 export default function AdminApiPage() {
   const [cfg, setCfg] = useState<RagflowConfig | null>(null);
@@ -127,6 +128,47 @@ export default function AdminApiPage() {
       <div className="mt-4">
         <ConnectionTests />
       </div>
+
+      <section className="mt-4 overflow-hidden rounded-xl border border-[#e4e4e7] bg-white">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#e4e4e7] px-5 py-3.5">
+          <h2 className="text-[14px] font-semibold">Admin data API (Supabase RPC)</h2>
+          <span className="text-[11px] text-[#a1a1aa]">POST {'{SUPABASE_URL}'}/rest/v1/rpc/&lt;name&gt; · typed client in lib/admin-api.ts</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[820px] text-left text-[12px]">
+            <thead className="border-b border-[#e4e4e7] bg-[#fafafa] text-[11px] uppercase tracking-[0.04em] text-[#71717a]">
+              <tr>
+                <th className="px-5 py-2.5 font-medium">Function</th>
+                <th className="px-5 py-2.5 font-medium">Access</th>
+                <th className="px-5 py-2.5 font-medium">Arguments</th>
+                <th className="px-5 py-2.5 font-medium">Returns</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#f0f0f1]">
+              {ADMIN_ENDPOINTS.map((endpoint) => (
+                <tr key={endpoint.name} className="align-top">
+                  <td className="px-5 py-2.5">
+                    <code className="text-[11.5px] font-medium">{endpoint.name}</code>
+                    <p className="mt-0.5 max-w-[320px] text-[11px] text-[#71717a]">{endpoint.description}</p>
+                  </td>
+                  <td className="px-5 py-2.5">
+                    <span className={`rounded-full border px-2 py-0.5 text-[10.5px] ${endpoint.access === 'admin' ? 'border-[#fde68a] bg-[#fffbeb] text-[#b45309]' : 'border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]'}`}>
+                      {endpoint.access}
+                    </span>
+                  </td>
+                  <td className="max-w-[260px] px-5 py-2.5 font-mono text-[10.5px] text-[#52525b]">{endpoint.args}</td>
+                  <td className="max-w-[300px] px-5 py-2.5 font-mono text-[10.5px] text-[#52525b]">{endpoint.returns}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="border-t border-[#e4e4e7] px-5 py-3 text-[11px] leading-relaxed text-[#71717a]">
+          Contract: admin functions check <code>is_admin()</code> on the server and return JSON. List endpoints return{' '}
+          <code>{'{ items, total, generated_at }'}</code>; errors use code <code>42501</code> for “not authorized”. Writes are
+          recorded in the audit log.
+        </p>
+      </section>
 
       <section className="mt-4 overflow-hidden rounded-xl border border-[#e4e4e7] bg-white">
         <div className="border-b border-[#e4e4e7] px-5 py-3.5">

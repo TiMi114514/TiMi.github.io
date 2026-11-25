@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { supabase } from '@/lib/supabase';
+import { logSecurityEvent } from '@/lib/security-events';
 import { useT } from '@/lib/i18n';
 
 export default function ResetPasswordPage() {
@@ -63,6 +64,7 @@ export default function ResetPasswordPage() {
       return;
     }
 
+    logSecurityEvent('password_changed');
     const { data: adminFlag } = await supabase.rpc('is_admin');
     router.replace(adminFlag === true ? '/admin' : '/account');
   }

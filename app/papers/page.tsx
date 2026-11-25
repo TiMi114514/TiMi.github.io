@@ -14,7 +14,7 @@ import {
 } from '@/lib/ragflow';
 import { parsePaperName } from '@/lib/paper-meta';
 import { downloadRagflowDocument, getRagflowConfig } from '@/lib/ragflow';
-import { getBrowserSessionId } from '@/lib/session';
+import { getBrowserSessionId, getVisitorId } from '@/lib/session';
 import { supabase } from '@/lib/supabase';
 import type { Paper } from '@/lib/types';
 import { useI18n, type MessageKey } from '@/lib/i18n';
@@ -186,6 +186,7 @@ export default function PapersPage() {
             user_id: user.id,
             paper_id: paper.id,
             paper_title: paper.title,
+            visitor_id: getVisitorId(),
           });
         } catch {
           /* best effort */
@@ -194,6 +195,7 @@ export default function PapersPage() {
         try {
           await supabase.from('download_events').insert({
             session_id: getBrowserSessionId(),
+            visitor_id: getVisitorId(),
             paper_id: paper.id,
             file_name: paper.title,
             dataset: paper.subject,

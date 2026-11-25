@@ -82,7 +82,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       verified: Boolean(user?.email_confirmed_at || user?.confirmed_at),
       isAdmin,
       signOut: async () => {
-        if (supabase) await supabase.auth.signOut();
+        if (!supabase) return;
+        await supabase.rpc('log_security_event', { p_kind: 'sign_out', p_email: user?.email ?? null }).then(
+          () => undefined,
+          () => undefined,
+        );
+        await supabase.auth.signOut();
       },
       refresh: async () => {
         if (!supabase) return;

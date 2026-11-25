@@ -241,7 +241,7 @@ const messages: Messages = {
   "pomo.localTitle": "Deine Ortszeit",
   "pomo.locating": "Dein Standort wird anhand deiner IP-Adresse ermittelt …",
   "pomo.localTime": "Ortszeit",
-  "pomo.localNote": "Deine Region wird anhand deiner IP-Adresse über einen öffentlichen Geolokalisierungsdienst (ipwho.is, ipip.net oder ipinfo.io) ermittelt und 6 Stunden lang in diesem Browser zwischengespeichert. Deine IP-Adresse wird nie an unsere Server gesendet.",
+  "pomo.localNote": "Deine Region wird anhand deiner IP-Adresse über einen öffentlichen Geolokalisierungsdienst (ipwho.is, ipip.net oder ipinfo.io) ermittelt und 6 Stunden lang in diesem Browser zwischengespeichert. Aus Sicherheitsgründen und für Besucherstatistiken speichert die Website außerdem deine IP-Adresse, Region, Browserdaten und einen Geräte-Fingerabdruck.",
 
   "login.eyebrow": "Willkommen zurück",
   "login.title": "Anmelden",

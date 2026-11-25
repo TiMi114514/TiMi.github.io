@@ -6,6 +6,8 @@ import { useAuth } from './AuthProvider';
 import { guessCountry } from '@/lib/analytics';
 import { getBrowserSessionId, getVisitorId } from '@/lib/session';
 import { supabase } from '@/lib/supabase';
+import { getFingerprint } from '@/lib/fingerprint';
+import { resolveGeoZone } from '@/lib/geo-time';
 
 const HEARTBEAT_MS = 60_000;
 
@@ -49,26 +51,51 @@ export function AnalyticsTracker() {
   useEffect(() => {
     if (!supabase) return;
     const client = supabase;
+    let meta: Record<string, unknown> | null = null;
+    let metaSent = false;
 
-    function beat() {
+    async function buildMeta(): Promise<Record<string, unknown>> {
+      const [fp, geo] = await Promise.all([
+        getFingerprint().catch(() => null),
+        resolveGeoZone('en').catch(() => null),
+      ]);
+      return {
+        fingerprint: fp?.hash,
+        fp_components: fp?.components,
+        region: geo?.region,
+        city: geo?.city,
+        country: geo?.country,
+        country_code: geo?.countryCode,
+        language: navigator.language,
+        screen: `${window.screen.width}x${window.screen.height}`,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      };
+    }
+
+    async function beat() {
       if (document.visibilityState !== 'visible') return;
       const path = pathRef.current ?? '/';
       if (path.startsWith('/admin')) return;
-      void client
-        .rpc('touch_presence', { p_visitor: getVisitorId(), p_path: path })
-        .then(({ error }) => {
-          if (error && process.env.NODE_ENV !== 'production') {
-            console.debug('presence skipped:', error.message);
-          }
-        });
+      if (!meta) meta = await buildMeta();
+      const { error } = await client.rpc('touch_presence', {
+        p_visitor: getVisitorId(),
+        p_path: path,
+        // Full metadata on the first beat, then only the small fields.
+        p_meta: metaSent ? { fingerprint: meta.fingerprint } : meta,
+      });
+      if (!error) metaSent = true;
+      else if (process.env.NODE_ENV !== 'production') {
+        console.debug('presence skipped:', error.message);
+      }
     }
 
-    beat();
-    const timer = window.setInterval(beat, HEARTBEAT_MS);
-    document.addEventListener('visibilitychange', beat);
+    const run = () => void beat();
+    run();
+    const timer = window.setInterval(run, HEARTBEAT_MS);
+    document.addEventListener('visibilitychange', run);
     return () => {
       window.clearInterval(timer);
-      document.removeEventListener('visibilitychange', beat);
+      document.removeEventListener('visibilitychange', run);
     };
   }, [user?.id]);
 

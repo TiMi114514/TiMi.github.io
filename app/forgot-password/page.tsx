@@ -6,6 +6,7 @@ import { MailCheck } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { appUrl, supabase } from '@/lib/supabase';
+import { logSecurityEvent } from '@/lib/security-events';
 import { useT } from '@/lib/i18n';
 
 export default function ForgotPasswordPage() {
@@ -31,6 +32,7 @@ export default function ForgotPasswordPage() {
       setError(resetError.message);
       return;
     }
+    logSecurityEvent('password_reset_requested', email.trim());
     setSent(true);
   }
 

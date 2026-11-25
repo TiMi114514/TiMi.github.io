@@ -241,7 +241,7 @@ const messages: Messages = {
   "pomo.localTitle": "現地時間",
   "pomo.locating": "IP アドレスから位置を取得中…",
   "pomo.localTime": "現地時間",
-  "pomo.localNote": "地域は公開の位置情報サービス（ipwho.is、ipip.net、ipinfo.io）を使って IP アドレスから判定し、このブラウザに6時間キャッシュされます。IP アドレスが当サイトのサーバーに送信されることはありません。",
+  "pomo.localNote": "地域は公開の位置情報サービス（ipwho.is、ipip.net、ipinfo.io）を使って IP アドレスから判定し、このブラウザに6時間キャッシュされます。セキュリティと訪問統計のため、当サイトは IP アドレス、地域、ブラウザ情報、端末フィンガープリントを記録します。",
 
   "login.eyebrow": "おかえりなさい",
   "login.title": "ログイン",

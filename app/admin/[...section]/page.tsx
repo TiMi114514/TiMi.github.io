@@ -1,11 +1,4 @@
-import {
-  Blocks,
-  Globe,
-  Lock,
-  Megaphone,
-  Plug,
-  Workflow,
-} from 'lucide-react';
+import { Globe, Megaphone } from 'lucide-react';
 import { notFound } from 'next/navigation';
 
 const sections: Record<
@@ -23,32 +16,6 @@ const sections: Record<
     description: 'The site is served from GitHub Pages at timi114514.github.io/TiMi.github.io/.',
     icon: Globe,
     note: 'A custom domain can be attached in the GitHub repository Pages settings.',
-  },
-  integrations: {
-    title: 'Integrations',
-    description: 'Supabase (auth + Postgres) and RAGFlow (chat + knowledge bases) are connected.',
-    icon: Plug,
-    note: 'Add more integrations later from the repository configuration.',
-  },
-  workflows: {
-    title: 'Workflows',
-    description:
-      'Builds and deployments run as a GitHub Actions workflow. There are no scheduled jobs yet.',
-    icon: Workflow,
-    note: 'Add scheduled tasks in .github/workflows when you need them.',
-  },
-  mcp: {
-    title: 'MCP',
-    description: 'Model Context Protocol servers are not connected to this deployment.',
-    icon: Blocks,
-    note: 'This panel is reserved for future tool connections.',
-  },
-  secrets: {
-    title: 'Secrets',
-    description:
-      'Secrets live in GitHub Actions and Supabase. The static bundle only contains the RAGFlow key needed for browser calls.',
-    icon: Lock,
-    note: 'Never commit .env.local. Rotate keys after sharing them in a chat.',
   },
 };
 

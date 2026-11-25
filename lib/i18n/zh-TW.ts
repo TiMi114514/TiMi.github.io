@@ -241,7 +241,7 @@ const messages: Messages = {
   "pomo.localTitle": "你的當地時間",
   "pomo.locating": "正在依 IP 位址判斷你的所在地…",
   "pomo.localTime": "當地時間",
-  "pomo.localNote": "我們透過公開的地理定位服務（ipwho.is、ipip.net 或 ipinfo.io）依 IP 位址查詢你的所在地區，並在此瀏覽器中快取 6 小時。你的 IP 絕不會傳送至我們的伺服器。",
+  "pomo.localNote": "我們透過公開的地理定位服務（ipwho.is、ipip.net 或 ipinfo.io）依 IP 位址查詢你的所在地區，並在此瀏覽器中快取 6 小時。基於安全與訪客統計目的，本站會記錄你的 IP 位址、地區、瀏覽器資訊與裝置指紋。",
 
   "login.eyebrow": "歡迎回來",
   "login.title": "登入",

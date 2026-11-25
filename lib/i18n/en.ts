@@ -239,7 +239,7 @@ const en = {
   "pomo.localTitle": "Your local time",
   "pomo.locating": "Locating you from your IP address…",
   "pomo.localTime": "Local time",
-  "pomo.localNote": "Your region is looked up from your IP address with a public geolocation service (ipwho.is, ipip.net or ipinfo.io) and cached in this browser for 6 hours. Your IP is never sent to our servers.",
+  "pomo.localNote": "Your region is looked up from your IP address with a public geolocation service (ipwho.is, ipip.net or ipinfo.io) and cached in this browser for 6 hours. For security and visitor statistics, the site also records your IP address, region, browser and a device fingerprint.",
 
   "login.eyebrow": "Welcome back",
   "login.title": "Sign in",

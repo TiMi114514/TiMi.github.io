@@ -14,6 +14,7 @@ import {
 import { BarCard } from '@/components/admin/BarCard';
 import { TrafficChart } from '@/components/admin/TrafficChart';
 import { supabase } from '@/lib/supabase';
+import { AudiencePanel } from '@/components/admin/AudiencePanel';
 import {
   formatDuration,
   formatNumber,
@@ -23,7 +24,7 @@ import {
   type AdminDownloadAnalytics,
 } from '@/lib/analytics';
 
-type Tab = 'traffic' | 'downloads' | 'sales' | 'sessions';
+type Tab = 'traffic' | 'downloads' | 'audience';
 
 function normalize(value: unknown): AdminAnalytics | null {
   if (!value || typeof value !== 'object') return null;
@@ -171,7 +172,7 @@ export default function AdminAnalyticsPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const requested = params.get('tab');
-    if (requested === 'downloads' || requested === 'sales' || requested === 'sessions') {
+    if (requested === 'downloads' || requested === 'audience') {
       setTab(requested);
     }
   }, []);
@@ -279,8 +280,7 @@ export default function AdminAnalyticsPage() {
           [
             ['traffic', 'Traffic overview'],
             ['downloads', 'Downloads'],
-            ['sales', 'Sales overview'],
-            ['sessions', 'Session recordings'],
+            ['audience', 'Audience'],
           ] as [Tab, string][]
         ).map(([value, label]) => (
           <button
@@ -380,7 +380,7 @@ export default function AdminAnalyticsPage() {
             <BarCard
               title="Country"
               rows={countryRows}
-              emptyLabel="No country data yet. It is estimated from the visitor's time zone."
+              emptyLabel="No country data yet. It is estimated from the visitor's time zone; see the Audience tab for IP-based locations."
             />
           </div>
         </>
@@ -416,18 +416,7 @@ export default function AdminAnalyticsPage() {
           </div>
         </>
       ) : (
-        <section className="mt-4 grid min-h-[320px] place-items-center rounded-xl border border-[#e4e4e7] bg-white">
-          <div className="max-w-sm px-6 py-16 text-center">
-            <h2 className="text-[16px] font-semibold">
-              {tab === 'sales' ? 'Sales overview' : 'Session recordings'}
-            </h2>
-            <p className="mt-2 text-[12.5px] leading-relaxed text-[#71717a]">
-              {tab === 'sales'
-                ? 'There are no paid plans or orders in this deployment yet. The panel is reserved for when you add them.'
-                : 'Recording sessions is not enabled. Page views, referrers and country estimates are collected without cookies or IP addresses.'}
-            </p>
-          </div>
-        </section>
+        <AudiencePanel days={days} refreshKey={refreshKey} />
       )}
     </div>
   );

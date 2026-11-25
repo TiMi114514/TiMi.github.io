@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
+  Activity,
   ArrowLeft,
   Blocks,
   Bot,
@@ -35,13 +36,14 @@ const navItems = [
   { href: '/admin/tutors', label: 'Tutors', icon: GraduationCap },
   { href: '/admin/data', label: 'Data', icon: Database },
   { href: '/admin', label: 'Analytics', icon: LineChart, exact: true },
+  { href: '/admin/visitors', label: 'Live visitors', icon: Activity, badge: 'Live' },
   { href: '/admin/marketing', label: 'Marketing', icon: Megaphone },
   { href: '/admin/domains', label: 'Domains', icon: Globe },
   { href: '/admin/integrations', label: 'Integrations', icon: Plug },
   { href: '/admin/security', label: 'Security', icon: ShieldCheck },
   { href: '/admin/code', label: 'Code', icon: Code2 },
   { href: '/admin/agents', label: 'Agents', icon: Bot },
-  { href: '/admin/workflows', label: 'Workflows', icon: Workflow, badge: 'New' },
+  { href: '/admin/workflows', label: 'Workflows', icon: Workflow },
   { href: '/admin/emails', label: 'Emails', icon: Mail },
   { href: '/admin/logs', label: 'Logs', icon: ScrollText },
   { href: '/admin/api', label: 'API', icon: KeyRound },
