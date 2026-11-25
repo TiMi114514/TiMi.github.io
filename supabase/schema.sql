@@ -176,6 +176,60 @@ create policy "page_views_read_admin"
   on public.page_views for select
   using (public.is_admin());
 
+-- Live presence: one row per visitor (signed-in user or anonymous guest),
+-- refreshed by a heartbeat roughly every 60 s while a tab is visible.
+-- "Online" = seen within the last 2 minutes. Written only through touch_presence().
+create table if not exists public.live_presence (
+  actor text primary key,
+  user_id uuid references auth.users (id) on delete cascade,
+  path text,
+  last_seen timestamptz not null default now()
+);
+
+create index if not exists live_presence_last_seen_idx on public.live_presence (last_seen desc);
+alter table public.live_presence enable row level security;
+
+drop policy if exists "live_presence_read_admin" on public.live_presence;
+create policy "live_presence_read_admin"
+  on public.live_presence for select
+  using (public.is_admin());
+
+create or replace function public.touch_presence(p_visitor text, p_path text default null)
+returns void
+language plpgsql
+volatile
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_actor text;
+begin
+  if v_uid is null and (p_visitor is null or length(p_visitor) < 8 or length(p_visitor) > 64) then
+    return;
+  end if;
+  v_actor := coalesce('u:' || v_uid::text, 'g:' || p_visitor);
+
+  -- A guest who signs in becomes the same person, not two.
+  if v_uid is not null and p_visitor is not null then
+    delete from public.live_presence where actor = 'g:' || p_visitor;
+  end if;
+
+  insert into public.live_presence (actor, user_id, path, last_seen)
+  values (v_actor, v_uid, left(p_path, 200), now())
+  on conflict (actor) do update
+    set last_seen = excluded.last_seen,
+        path = excluded.path,
+        user_id = excluded.user_id;
+
+  -- Keep the table tiny.
+  delete from public.live_presence where last_seen < now() - interval '1 day';
+end;
+$$;
+
+revoke all on function public.touch_presence(text, text) from public;
+grant execute on function public.touch_presence(text, text) to anon, authenticated;
+
 -- Admin read/write access to the existing tables.
 drop policy if exists "downloads_select_admin" on public.downloads;
 create policy "downloads_select_admin"
@@ -239,8 +293,8 @@ begin
       (select count(*) from previous) as prev_visits,
       (select count(*) from prev_sessions) as prev_uniques,
       coalesce((select avg(extract(epoch from (ended - started))) from prev_sessions), 0) as prev_duration,
-      (select count(distinct session_id) from public.page_views
-        where created_at >= now() - interval '5 minutes') as live
+      (select count(*) from public.live_presence
+        where last_seen >= now() - interval '2 minutes') as live
   ),
   series as (
     select d::date as day, count(f.id) as visits
@@ -508,8 +562,11 @@ as $$
     'download_users', (select count(distinct actor) from activity),
     'download_files', (select count(*) from activity),
     'live_learners',
-      (select count(distinct session_id) from public.page_views
-         where created_at >= now() - interval '5 minutes')
+      (select count(*) from public.live_presence
+         where last_seen >= now() - interval '2 minutes'),
+    'live_guests',
+      (select count(*) from public.live_presence
+         where last_seen >= now() - interval '2 minutes' and user_id is null)
   );
 $$;
 

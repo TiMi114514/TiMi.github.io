@@ -4,8 +4,10 @@ import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from './AuthProvider';
 import { guessCountry } from '@/lib/analytics';
-import { getBrowserSessionId } from '@/lib/session';
+import { getBrowserSessionId, getVisitorId } from '@/lib/session';
 import { supabase } from '@/lib/supabase';
+
+const HEARTBEAT_MS = 60_000;
 
 /**
  * Privacy-friendly page view counter: stores only the path, an anonymous
@@ -40,6 +42,35 @@ export function AnalyticsTracker() {
         }
       });
   }, [pathname, user?.id]);
+
+  // Live presence heartbeat: counts signed-in users and guests alike.
+  const pathRef = useRef(pathname);
+  pathRef.current = pathname;
+  useEffect(() => {
+    if (!supabase) return;
+    const client = supabase;
+
+    function beat() {
+      if (document.visibilityState !== 'visible') return;
+      const path = pathRef.current ?? '/';
+      if (path.startsWith('/admin')) return;
+      void client
+        .rpc('touch_presence', { p_visitor: getVisitorId(), p_path: path })
+        .then(({ error }) => {
+          if (error && process.env.NODE_ENV !== 'production') {
+            console.debug('presence skipped:', error.message);
+          }
+        });
+    }
+
+    beat();
+    const timer = window.setInterval(beat, HEARTBEAT_MS);
+    document.addEventListener('visibilitychange', beat);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', beat);
+    };
+  }, [user?.id]);
 
   return null;
 }
