@@ -1,5 +1,6 @@
 import type { Paper } from './types';
 import { parsePaperName } from './paper-meta';
+import { supabase } from './supabase';
 
 export type RagflowMode = 'native' | 'openai';
 
@@ -79,8 +80,21 @@ export function saveRagflowConfig(patch: Partial<RagflowConfig>): RagflowConfig 
   return next;
 }
 
+/**
+ * Gateway mode: the public site talks to the RAGFlow security gateway, which
+ * holds the RAGFlow key itself. Enabled when no key is shipped in the build.
+ */
+export function usesGateway(cfg: RagflowConfig): boolean {
+  return Boolean(cfg.baseUrl) && !cfg.apiKey;
+}
+
+/** Can this browser call RAGFlow (directly with a key, or via the gateway)? */
+function reachable(cfg: RagflowConfig): boolean {
+  return Boolean(cfg.baseUrl) && (Boolean(cfg.apiKey) || usesGateway(cfg));
+}
+
 export function ragflowConfigured(cfg: RagflowConfig = getRagflowConfig()): boolean {
-  return Boolean(cfg.baseUrl && cfg.apiKey);
+  return reachable(cfg);
 }
 
 export function datasetIds(cfg: RagflowConfig): string[] {
@@ -91,10 +105,21 @@ export function datasetIds(cfg: RagflowConfig): string[] {
 }
 
 function authHeaders(cfg: RagflowConfig): HeadersInit {
+  if (!cfg.apiKey) return { 'Content-Type': 'application/json' };
   return {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${cfg.apiKey}`,
   };
+}
+
+/** Chat / retrieval: in gateway mode the signed-in user's Supabase token proves who is asking. */
+async function chatHeaders(cfg: RagflowConfig): Promise<HeadersInit> {
+  if (cfg.apiKey) return authHeaders(cfg);
+  const { data } = (await supabase?.auth.getSession()) ?? { data: { session: null } };
+  const token = data.session?.access_token;
+  return token
+    ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+    : { 'Content-Type': 'application/json' };
 }
 
 function errorMessage(status: number, statusText: string, body: string): string {
@@ -201,7 +226,7 @@ async function nativeChat(
   const endpoint = `${cfg.baseUrl}/api/v1/chats/${encodeURIComponent(cfg.chatId)}/completions`;
   const res = await fetch(endpoint, {
     method: 'POST',
-    headers: authHeaders(cfg),
+    headers: await chatHeaders(cfg),
     body: JSON.stringify({
       question,
       stream: true,
@@ -304,7 +329,7 @@ async function openAiChat(
   const endpoint = `${cfg.baseUrl}/api/v1/chats_openai/${encodeURIComponent(cfg.chatId)}/chat/completions`;
   const res = await fetch(endpoint, {
     method: 'POST',
-    headers: authHeaders(cfg),
+    headers: await chatHeaders(cfg),
     body: JSON.stringify({ model, messages, stream: true, temperature: 0.2 }),
     signal: options.signal,
   });
@@ -402,7 +427,7 @@ type RawAssistant = {
  * RAGFlow with the "DQ · " prefix, one per knowledge base.
  */
 export async function listRagflowAssistants(cfg: RagflowConfig): Promise<RagflowAssistant[]> {
-  if (!cfg.baseUrl || !cfg.apiKey) return [];
+  if (!reachable(cfg)) return [];
 
   if (typeof window !== 'undefined') {
     try {
@@ -456,12 +481,12 @@ export async function retrieveCitations(
   question: string,
   datasetIds: string[],
 ): Promise<string[]> {
-  if (!cfg.baseUrl || !cfg.apiKey || datasetIds.length === 0) return [];
+  if (!reachable(cfg) || datasetIds.length === 0) return [];
 
   try {
     const res = await fetch(`${cfg.baseUrl}/api/v1/retrieval`, {
       method: 'POST',
-      headers: authHeaders(cfg),
+      headers: await chatHeaders(cfg),
       body: JSON.stringify({
         question,
         dataset_ids: datasetIds,
@@ -651,7 +676,7 @@ function mapDocument(doc: RagflowDocument, dataset: { id: string; name: string }
  */
 export async function fetchArchivePreview(force = false): Promise<ArchivePreviewData> {
   const cfg = getRagflowConfig();
-  if (!cfg.baseUrl || !cfg.apiKey) {
+  if (!reachable(cfg)) {
     return { papers: [], datasets: [], totalDocuments: 0 };
   }
 
@@ -669,10 +694,9 @@ export async function fetchArchivePreview(force = false): Promise<ArchivePreview
     }
   }
 
-  let datasets = await listRagflowDatasets(cfg).catch(() => []);
-  if (datasets.length === 0) {
-    datasets = datasetIds(cfg).map((id) => ({ id, name: id }));
-  }
+  // If RAGFlow is unreachable, show nothing rather than raw dataset ids as names.
+  const datasets = await listRagflowDatasets(cfg).catch(() => [] as RagflowDataset[]);
+  if (datasets.length === 0) return { papers: [], datasets: [], totalDocuments: 0 };
 
   const withDocuments = datasets.filter((dataset) => (dataset.document_count ?? 0) > 0);
   const targets = (withDocuments.length > 0 ? withDocuments : datasets).slice(0, 4);
@@ -735,12 +759,10 @@ export async function searchRagflowDocuments(
 ): Promise<Paper[]> {
   const cfg = getRagflowConfig();
   const text = (filters.query ?? '').trim();
-  if (!cfg.baseUrl || !cfg.apiKey) return [];
+  if (!reachable(cfg)) return [];
 
-  let datasets = await listRagflowDatasets(cfg).catch(() => []);
-  if (datasets.length === 0) {
-    datasets = datasetIds(cfg).map((id) => ({ id, name: id }));
-  }
+  let datasets = await listRagflowDatasets(cfg).catch(() => [] as RagflowDataset[]);
+  if (datasets.length === 0) throw new Error('RAGFlow is unreachable.');
   if (filters.datasetId) {
     datasets = datasets.filter((dataset) => dataset.id === filters.datasetId);
     if (datasets.length === 0) {
