@@ -30,9 +30,9 @@ function QrImage({ method, label, soon }: { method: 'wechat' | 'alipay'; label: 
   const src = qrUrl(method);
   return (
     <figure className="flex flex-col items-center gap-2">
-      <div className="grid h-[164px] w-[164px] place-items-center overflow-hidden rounded-xl border border-line bg-white">
+      <div className="grid h-[188px] w-[188px] place-items-center overflow-hidden rounded-xl border border-line bg-white p-1.5">
         {src && !failed ? (
-          <img src={src} alt={label} width={164} height={164} className="h-full w-full object-contain" onError={() => setFailed(true)} />
+          <img src={src} alt={label} width={188} height={188} className="h-full w-full object-contain" onError={() => setFailed(true)} />
         ) : (
           <span className="flex flex-col items-center gap-1.5 px-3 text-center text-[11px] text-muted">
             <QrCode className="h-6 w-6" aria-hidden />

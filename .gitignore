@@ -10,3 +10,9 @@ next-env.d.ts
 .vercel
 .shots
 HANDOFF.md
+
+# RAGFlow gateway secrets and logs
+gateway/.env
+gateway/logs/
+gateway/DISABLED
+
