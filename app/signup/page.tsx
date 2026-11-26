@@ -9,11 +9,15 @@ import { useAuth } from '@/components/AuthProvider';
 import { forwardTeacherApplication } from '@/lib/teacher-email';
 import { appUrl, supabase } from '@/lib/supabase';
 import { logSecurityEvent } from '@/lib/security-events';
-import { useT } from '@/lib/i18n';
+import { LOCALES, useI18n, type Locale } from '@/lib/i18n';
+import { examZoneFor, getVisitorPlace, saveZone, type VisitorPlace } from '@/lib/visitor-place';
+import type { ExamZone } from '@/lib/exam-timetable';
 
 export default function SignupPage() {
   const router = useRouter();
-  const t = useT();
+  const { locale, setLocale, t } = useI18n();
+  const [place, setPlace] = useState<VisitorPlace | null>(null);
+  const [zone, setZone] = useState<ExamZone>(5);
   const { user, loading } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -61,6 +65,19 @@ export default function SignupPage() {
     if (!loading && user) router.replace('/account');
   }, [loading, user, router]);
 
+  // Pre-fill language and exam zone from the visitor's IP; both stay editable.
+  useEffect(() => {
+    let alive = true;
+    getVisitorPlace().then((p) => {
+      if (!alive) return;
+      setPlace(p);
+      setZone(examZoneFor(p));
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!supabase) {
@@ -78,7 +95,7 @@ export default function SignupPage() {
       email: email.trim(),
       password,
       options: {
-        data: { display_name: name.trim() },
+        data: { display_name: name.trim(), locale, exam_zone: String(zone), country: place?.country ?? null },
         emailRedirectTo: appUrl('/auth/callback'),
       },
     });
@@ -89,7 +106,9 @@ export default function SignupPage() {
       return;
     }
 
-    logSecurityEvent('sign_up', email.trim(), { teacher: applyTeacher });
+    saveZone(zone);
+    setLocale(locale);
+    logSecurityEvent('sign_up', email.trim(), { teacher: applyTeacher, locale, exam_zone: zone, country: place?.country ?? null });
 
     if (applyTeacher) {
       let documentPath: string | null = null;
@@ -195,6 +214,32 @@ export default function SignupPage() {
                 placeholder={t('auth.atLeast8')}
               />
             </label>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block space-y-1.5 text-[12.5px] text-muted">
+                <span>{t('signup.language')}</span>
+                <select className="input" value={locale} onChange={(event) => setLocale(event.target.value as Locale)}>
+                  {LOCALES.map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block space-y-1.5 text-[12.5px] text-muted">
+                <span>{t('signup.examZone')}</span>
+                <select className="input" value={zone} onChange={(event) => setZone(Number(event.target.value) as ExamZone)}>
+                  {([1, 2, 3, 4, 5, 6] as ExamZone[]).map((z) => (
+                    <option key={z} value={z}>
+                      {t('exams.zoneOption', { n: z })}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <p className="-mt-1 text-[11px] leading-relaxed text-muted">
+              {place?.country ? t('signup.detected', { country: place.country }) : t('signup.detecting')}
+            </p>
 
             <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-paper/60 px-3.5 py-3 transition-colors hover:bg-paper">
               <input

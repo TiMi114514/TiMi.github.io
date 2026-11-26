@@ -64,12 +64,18 @@ function detectLocale(): Locale {
   try {
     const saved = window.localStorage.getItem(STORAGE_KEY);
     if (isLocale(saved)) return saved;
+    // Previously auto-detected from IP: start in it straight away (no flash of English).
+    const auto = window.localStorage.getItem('alevel-hub.locale.auto');
+    if (isLocale(auto)) return auto;
   } catch {
     /* storage unavailable */
   }
-  // English by default; visitors switch language from the header and the choice is remembered.
+  // English until the IP lookup (or a saved choice) says otherwise.
   return 'en';
 }
+
+/** Language detected from IP (not a user choice) — remembered so the next visit starts in it. */
+const AUTO_KEY = 'alevel-hub.locale.auto';
 
 export function format(template: string, vars?: Vars): string {
   if (!vars) return template;
@@ -93,7 +99,32 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>('en');
 
   useEffect(() => {
-    setLocaleState(detectLocale());
+    const saved = detectLocale();
+    setLocaleState(saved);
+    // No saved choice yet: pick the language from the visitor's IP country once.
+    // An explicit choice (header switcher, account) always wins and is remembered.
+    let hasSaved = false;
+    try {
+      hasSaved = isLocale(window.localStorage.getItem(STORAGE_KEY));
+    } catch {
+      /* storage unavailable */
+    }
+    if (hasSaved) return;
+    let alive = true;
+    void import('../visitor-place').then(async ({ getVisitorPlace, localeForCountry }) => {
+      const place = await getVisitorPlace();
+      const detected = localeForCountry(place.country);
+      if (!alive || !detected) return;
+      setLocaleState(detected);
+      try {
+        window.localStorage.setItem(AUTO_KEY, detected);
+      } catch {
+        /* storage unavailable */
+      }
+    });
+    return () => {
+      alive = false;
+    };
   }, []);
 
   useEffect(() => {
