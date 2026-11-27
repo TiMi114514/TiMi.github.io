@@ -29,6 +29,7 @@ type HumanRequest = {
   preferred_at: string | null;
   status: 'pending' | 'contacted' | 'closed';
   created_at: string;
+  priority?: boolean;
 };
 
 const statusStyles: Record<string, string> = {
@@ -59,7 +60,7 @@ export default function AdminTutorsPage() {
         .limit(100),
       supabase
         .from('human_tutor_requests')
-        .select('id, email, subject, question, preferred_at, status, created_at')
+        .select('id, email, subject, question, preferred_at, status, created_at, priority')
         .order('created_at', { ascending: false })
         .limit(100),
     ]);
@@ -84,9 +85,11 @@ export default function AdminTutorsPage() {
 
   const sortedRequests = useMemo(() => {
     const rows = requests ?? [];
+    // Pending first; within pending, members (priority) first; then newest.
     return [...rows].sort((a, b) => {
-      if (a.status === b.status) return b.created_at.localeCompare(a.created_at);
-      return a.status === 'pending' ? -1 : b.status === 'pending' ? 1 : 0;
+      if (a.status !== b.status) return a.status === 'pending' ? -1 : b.status === 'pending' ? 1 : 0;
+      if (a.status === 'pending' && !!a.priority !== !!b.priority) return a.priority ? -1 : 1;
+      return b.created_at.localeCompare(a.created_at);
     });
   }, [requests]);
 
@@ -383,7 +386,12 @@ export default function AdminTutorsPage() {
                       <UserRound className="h-4 w-4 text-[#52525b]" />
                     </span>
                     <div>
-                      <p className="text-[13.5px] font-medium">{row.subject}</p>
+                      <p className="flex items-center gap-2 text-[13.5px] font-medium">
+                        {row.subject}
+                        {row.priority ? (
+                          <span className="rounded-full border border-[#e9cf86] bg-[#fffaf0] px-2 py-0.5 text-[10.5px] font-medium text-[#8a6100]">会员优先</span>
+                        ) : null}
+                      </p>
                       <p className="mt-0.5 flex items-center gap-1 text-[11.5px] text-[#71717a]">
                         <Mail className="h-3 w-3" /> {row.email} ·{' '}
                         {new Date(row.created_at).toLocaleString('en-US', {

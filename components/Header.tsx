@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Pomodoro } from './Pomodoro';
 import { useAuth } from './AuthProvider';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { UserMenu } from './UserMenu';
 import { useT } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/i18n';
 
@@ -20,7 +21,7 @@ const nav: { href: string; label: MessageKey }[] = [
 export function Header() {
   const pathname = usePathname() ?? '';
   const router = useRouter();
-  const { user, loading, signOut, isAdmin } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const t = useT();
 
   const displayName =
@@ -76,22 +77,7 @@ export function Header() {
           {loading ? (
             <span className="h-8 w-24 animate-pulse rounded-full bg-soft" />
           ) : user ? (
-            <>
-              {isAdmin ? (
-                <Link
-                  href="/admin"
-                  className="hidden rounded-full border border-line bg-paper/70 px-3 py-2 text-[12.5px] text-ink transition-all duration-200 hover:-translate-y-0.5 hover:bg-white sm:inline-flex"
-                >
-                  {t('nav.admin')}
-                </Link>
-              ) : null}
-              <span className="hidden max-w-[160px] truncate text-muted sm:inline">
-                {displayName}
-              </span>
-              <button onClick={handleSignOut} className="btn-outline">
-                {t('nav.signOut')}
-              </button>
-            </>
+            <UserMenu displayName={displayName} onSignOut={() => void handleSignOut()} />
           ) : (
             <>
               <Link href="/login" className="hidden text-muted transition-colors hover:text-ink sm:inline">

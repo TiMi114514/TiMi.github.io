@@ -48,6 +48,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // A redemption code entered at sign-up is redeemed on the first signed-in visit.
+  useEffect(() => {
+    if (!supabase || !user) return;
+    let pending: string | null = null;
+    try {
+      pending = window.localStorage.getItem('alevel-hub.pending-redeem');
+    } catch {
+      /* storage unavailable */
+    }
+    if (!pending) return;
+    void supabase.rpc('redeem_code', { p_code: pending }).then(({ error }) => {
+      try {
+        window.localStorage.removeItem('alevel-hub.pending-redeem');
+        window.sessionStorage.setItem('alevel-hub.redeem-result', error ? 'err:' + error.message : 'ok');
+      } catch {
+        /* storage unavailable */
+      }
+    });
+  }, [user?.id]);
+
   useEffect(() => {
     if (!supabase || !user) {
       setIsAdmin(false);

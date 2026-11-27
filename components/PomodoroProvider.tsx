@@ -1,7 +1,8 @@
 'use client';
 
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { RotateCw, X } from 'lucide-react';
+import { logPomodoro } from '@/lib/account';
 import {
   DEFAULT_BREAK_MINUTES,
   DEFAULT_FOCUS_MINUTES,
@@ -89,6 +90,43 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
   const [zone, setZone] = useState<GeoZone | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const overlayRef = useRef<HTMLDivElement | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  // 'auto' = follow the device; 'rotated' = the view is turned 90° (CSS fallback when the browser cannot lock orientation).
+  const [rotated, setRotated] = useState(false);
+  const [rotateMode, setRotateMode] = useState<'lock' | 'css' | null>(null);
+
+  useEffect(() => {
+    const ua = navigator.userAgent;
+    // iPadOS reports a desktop Mac UA; touch points reveal it.
+    const ipad = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
+    setIsMobile(ipad || /Android|iPhone|iPad|iPod|Mobile|Tablet|HarmonyOS|SamsungBrowser/i.test(ua));
+  }, []);
+
+  // Rotate: first try the real orientation lock (Android Chrome in fullscreen);
+  // where that is not allowed (iPad / iPhone Safari) rotate the view 90° with CSS.
+  // One state covers both, so the same button always undoes it.
+  async function toggleRotate() {
+    const orientation = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void>; unlock?: () => void };
+    if (rotated) {
+      setRotated(false);
+      setRotateMode(null);
+      try {
+        orientation?.unlock?.();
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    const portraitNow = window.innerHeight > window.innerWidth;
+    try {
+      if (!orientation?.lock) throw new Error('no lock');
+      await orientation.lock(portraitNow ? 'landscape' : 'portrait');
+      setRotateMode('lock');
+    } catch {
+      setRotateMode('css');
+    }
+    setRotated(true);
+  }
   const { locale, t } = useI18n();
 
   useEffect(() => {
@@ -145,6 +183,8 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
         setRemaining(left);
         return;
       }
+      // A block ran to the end: record it (signed-in users only; the server rejects bursts).
+      void logPomodoro(mode === 'focus' ? focusMinutes : breakMinutes, mode);
       const next: PomodoroMode = mode === 'focus' ? 'break' : 'focus';
       setMode(next);
       setRemaining(durationSeconds(next, focusMinutes, breakMinutes));
@@ -208,6 +248,13 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
   }
 
   function closeFocusScreen() {
+    setRotated(false);
+    setRotateMode(null);
+    try {
+      (screen.orientation as ScreenOrientation & { unlock?: () => void })?.unlock?.();
+    } catch {
+      /* ignore */
+    }
     if (document.fullscreenElement) {
       void document.exitFullscreen().catch(() => undefined);
     }
@@ -239,8 +286,27 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
       {focusScreen ? (
         <div
           ref={overlayRef}
-          className="fixed inset-0 z-[120] flex flex-col items-center justify-center bg-black text-white"
+          className="fixed inset-0 z-[120] overflow-hidden bg-black text-white"
         >
+          <div
+            className="absolute flex flex-col items-center justify-center"
+            style={
+              rotated && rotateMode === 'css'
+                ? { width: '100vh', height: '100vw', left: '50%', top: '50%', transform: 'translate(-50%, -50%) rotate(90deg)' }
+                : { inset: 0 }
+            }
+          >
+          {isMobile ? (
+            <button
+              type="button"
+              onClick={() => void toggleRotate()}
+              className="absolute left-5 top-5 flex h-10 items-center gap-1.5 rounded-full border border-white/20 px-3.5 text-[12.5px] text-white/75 transition-colors hover:text-white"
+              aria-label="旋转屏幕"
+            >
+              <RotateCw className="h-4 w-4" aria-hidden />
+              {rotated ? '恢复' : '横屏'}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={closeFocusScreen}
@@ -295,6 +361,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
             >
               {mode === 'focus' ? t('pomo.takeBreak') : t('pomo.backToFocus')}
             </button>
+          </div>
           </div>
         </div>
       ) : null}

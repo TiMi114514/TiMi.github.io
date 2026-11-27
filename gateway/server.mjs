@@ -371,7 +371,7 @@ function corsHeaders(req) {
     headers['Access-Control-Allow-Origin'] = origin;
     headers['Access-Control-Allow-Headers'] = 'Authorization, Content-Type';
     headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS';
-    headers['Access-Control-Expose-Headers'] = 'Content-Disposition, Retry-After';
+    headers['Access-Control-Expose-Headers'] = 'Content-Disposition, Retry-After, X-Quota-Used, X-Quota-Limit, X-Plan';
     headers['Access-Control-Max-Age'] = '600';
   }
   return headers;
@@ -510,6 +510,39 @@ function limit(res, ctx, key, rule) {
   return false;
 }
 
+// Membership quota: count one AI question against the user's daily plan allowance.
+// Uses the student's own Supabase token, so the database decides (no service key here).
+// If Supabase is unreachable the question is allowed (fail open) and logged.
+async function consumeAiQuota(req, res, ctx) {
+  const supabaseUrl = (env.SUPABASE_URL || '').replace(/\/+$/, '');
+  const anonKey = env.SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !anonKey) return true;
+  const token = String(req.headers.authorization || '').slice(7).trim();
+  try {
+    const r = await fetch(`${supabaseUrl}/rest/v1/rpc/record_ai_usage`, {
+      method: 'POST',
+      headers: { apikey: anonKey, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: '{}',
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!r.ok) {
+      log({ event: 'quota_check_failed', status: r.status });
+      return true;
+    }
+    const q = await r.json();
+    ctx.quota = `${q.used}/${q.limit}`;
+    if (q.allowed) return true;
+    fail(res, ctx, 429, q.plan === 'pro'
+      ? `今日 AI 提问额度（${q.limit} 次）已用完，明天 0 点（北京时间）恢复。`
+      : `今日免费 AI 提问额度（${q.limit} 次）已用完。兑换会员可获得更多每日提问次数，明天 0 点（北京时间）恢复。`,
+      { 'Retry-After': '3600', 'X-Quota-Used': String(q.used), 'X-Quota-Limit': String(q.limit), 'X-Plan': String(q.plan) });
+    return false;
+  } catch (error) {
+    log({ event: 'quota_check_failed', message: error.message });
+    return true;
+  }
+}
+
 // ---------------------------------------------------------------- routes
 
 async function handle(req, res, ctx) {
@@ -601,6 +634,7 @@ async function handle(req, res, ctx) {
     await ensureCatalogue();
     const chatId = (nativeChat || openaiChat)[1];
     if (!catalogue.chats.has(chatId)) return fail(res, ctx, 404, 'Not found.');
+    if (!(await consumeAiQuota(req, res, ctx))) return;
 
     const body = await readJsonBody(req, 64 * 1024);
     let upstreamBody;

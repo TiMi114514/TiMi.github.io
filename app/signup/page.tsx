@@ -18,6 +18,7 @@ export default function SignupPage() {
   const { locale, setLocale, t } = useI18n();
   const [place, setPlace] = useState<VisitorPlace | null>(null);
   const [zone, setZone] = useState<ExamZone>(5);
+  const [redeem, setRedeem] = useState('');
   const { user, loading } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -156,6 +157,14 @@ export default function SignupPage() {
     }
 
     window.sessionStorage.setItem('paperwise.pendingEmail', email.trim());
+    // The code is redeemed on first sign-in (after email verification) — see AuthProvider.
+    if (redeem.replace(/[^A-Za-z0-9]/g, '').length === 12) {
+      try {
+        window.localStorage.setItem('alevel-hub.pending-redeem', redeem.trim());
+      } catch {
+        /* storage unavailable */
+      }
+    }
 
     if (data.session) {
       router.replace('/account');
@@ -240,6 +249,19 @@ export default function SignupPage() {
             <p className="-mt-1 text-[11px] leading-relaxed text-muted">
               {place?.country ? t('signup.detected', { country: place.country }) : t('signup.detecting')}
             </p>
+
+            <label className="block space-y-1.5 text-[12.5px] text-muted">
+              <span>兑换码（选填）</span>
+              <input
+                value={redeem}
+                onChange={(event) => setRedeem(event.target.value.toUpperCase())}
+                placeholder="XXXX-XXXX-XXXX"
+                maxLength={20}
+                autoComplete="off"
+                className="input font-mono tracking-[0.12em]"
+              />
+              <span className="block text-[11px]">有兑换码可在此填写，验证邮箱并首次登录后自动开通会员；也可以以后在个人中心兑换。</span>
+            </label>
 
             <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-paper/60 px-3.5 py-3 transition-colors hover:bg-paper">
               <input

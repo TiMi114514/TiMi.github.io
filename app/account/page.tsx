@@ -7,6 +7,7 @@ import { BadgeCheck, Download, GraduationCap, LogOut, MailWarning } from 'lucide
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { useAuth } from '@/components/AuthProvider';
+import { AccountCenter } from '@/components/AccountCenter';
 import { appUrl, supabase } from '@/lib/supabase';
 import { useI18n, type MessageKey } from '@/lib/i18n';
 
@@ -196,6 +197,8 @@ export default function AccountPage() {
               </button>
             </div>
           </div>
+
+          <AccountCenter />
 
           {teacherApplication ? (
             <div className="card mt-6 p-5">

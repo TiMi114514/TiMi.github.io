@@ -124,6 +124,13 @@ async function chatHeaders(cfg: RagflowConfig): Promise<HeadersInit> {
 
 function errorMessage(status: number, statusText: string, body: string): string {
   const trimmed = body.trim();
+  // Gateway messages (quota, sign-in, rate limits) are written for students: show them as-is.
+  try {
+    const parsed = JSON.parse(trimmed) as { message?: unknown };
+    if ((status === 429 || status === 401 || status === 403) && typeof parsed.message === 'string') return parsed.message;
+  } catch {
+    /* not JSON */
+  }
   return `RAGFlow request failed (${status} ${statusText})${trimmed ? `: ${trimmed.slice(0, 300)}` : ''}`;
 }
 
