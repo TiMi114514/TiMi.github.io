@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Download, FileText } from 'lucide-react';
 import type { Paper } from '@/lib/types';
 import { useT } from '@/lib/i18n';
+import { DownloadLabel, useDownloads } from './DownloadProvider';
 
 export function PaperCard({
   paper,
@@ -17,6 +18,7 @@ export function PaperCard({
   busy?: boolean;
 }) {
   const t = useT();
+  const downloads = useDownloads();
   const meta =
     [paper.questions ? t('card.questions', { n: paper.questions }) : null, paper.size]
       .filter(Boolean)
@@ -47,11 +49,12 @@ export function PaperCard({
           <button
             type="button"
             onClick={onDownload}
+            onPointerEnter={() => downloads.prefetch(paper)}
+            onTouchStart={() => downloads.prefetch(paper)}
             disabled={busy}
             className="btn w-full border border-line bg-paper py-2.5 text-[13px] text-ink hover:bg-cream"
           >
-            <Download className="h-4 w-4" aria-hidden />
-            {busy ? t('card.preparing') : t('card.download')}
+            <DownloadLabel docId={paper.ragflowDocId} idle={t('card.download')} />
           </button>
         ) : (
           <Link

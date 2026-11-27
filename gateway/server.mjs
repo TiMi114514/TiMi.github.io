@@ -370,9 +370,9 @@ function corsHeaders(req) {
   };
   if (origin && CFG.origins.includes(origin)) {
     headers['Access-Control-Allow-Origin'] = origin;
-    headers['Access-Control-Allow-Headers'] = 'Authorization, Content-Type';
+    headers['Access-Control-Allow-Headers'] = 'Authorization, Content-Type, If-None-Match';
     headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS';
-    headers['Access-Control-Expose-Headers'] = 'Content-Disposition, Retry-After, X-Quota-Used, X-Quota-Limit, X-Plan, X-Catalog-Version';
+    headers['Access-Control-Expose-Headers'] = 'Content-Disposition, Content-Length, Retry-After, X-Quota-Used, X-Quota-Limit, X-Plan, X-Catalog-Version';
     headers['Access-Control-Max-Age'] = '600';
   }
   return headers;
@@ -425,7 +425,7 @@ async function readJsonBody(req, maxBytes) {
   }
 }
 
-async function forward(req, res, ctx, { method = 'GET', upstreamPath, body, timeoutMs = 30_000, transform }) {
+async function forward(req, res, ctx, { method = 'GET', upstreamPath, body, timeoutMs = 30_000, transform, extraHeaders = {} }) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   res.on('close', () => controller.abort());
@@ -449,7 +449,7 @@ async function forward(req, res, ctx, { method = 'GET', upstreamPath, body, time
       clearTimeout(timer);
       return send(res, ctx, upstream.status, json?.code === 0 ? transform(json) : sanitizeError(json));
     }
-    const headers = { ...ctx.cors, 'Content-Type': type };
+    const headers = { ...ctx.cors, 'Content-Type': type, ...(upstream.ok ? extraHeaders : {}) };
     const disposition = upstream.headers.get('content-disposition');
     if (disposition) headers['Content-Disposition'] = disposition;
     const length = upstream.headers.get('content-length');
@@ -658,7 +658,18 @@ async function handle(req, res, ctx) {
     if (!limit(res, ctx, `dlday:${ctx.ip}`, CFG.limits.ipDownloadDay)) return;
     await ensureCatalogue();
     if (!catalogue.datasets.has(m[1])) return fail(res, ctx, 404, 'Not found.');
-    return forward(req, res, ctx, { upstreamPath: `/api/v1/datasets/${m[1]}/documents/${m[2]}`, timeoutMs: 120_000 });
+    // Documents never change once uploaded: let browsers cache them and revalidate cheaply.
+    const etag = `"${m[2]}"`;
+    if (String(req.headers['if-none-match'] || '').includes(etag)) {
+      ctx.status = 304;
+      res.writeHead(304, { ...ctx.cors, ETag: etag, 'Cache-Control': 'private, max-age=604800, immutable' });
+      return res.end();
+    }
+    return forward(req, res, ctx, {
+      upstreamPath: `/api/v1/datasets/${m[1]}/documents/${m[2]}`,
+      timeoutMs: 120_000,
+      extraHeaders: { ETag: etag, 'Cache-Control': 'private, max-age=604800, immutable' },
+    });
   }
 
   const nativeChat = /^\/api\/v1\/chats\/([a-f0-9]{32})\/completions$/.exec(p);

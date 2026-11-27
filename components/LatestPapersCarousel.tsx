@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, ChevronLeft, ChevronRight, Download, FileText } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
-import { downloadRagflowDocument, fetchLatestSeries, getRagflowConfig, type LatestSeries } from '@/lib/ragflow';
+import { fetchLatestSeries, type LatestSeries } from '@/lib/ragflow';
+import { DownloadLabel, useDownloads } from '@/components/DownloadProvider';
 import { parsePaperName } from '@/lib/paper-meta';
 import { getBrowserSessionId, getVisitorId } from '@/lib/session';
 import { supabase } from '@/lib/supabase';
@@ -22,7 +23,7 @@ export function LatestPapersCarousel() {
   const { t } = useI18n();
   const { user } = useAuth();
   const [data, setData] = useState<LatestSeries | null | undefined>(undefined);
-  const [busy, setBusy] = useState<string | null>(null);
+  const downloads = useDownloads();
   const [error, setError] = useState<string | null>(null);
   const track = useRef<HTMLDivElement | null>(null);
   const paused = useRef(false);
@@ -78,10 +79,9 @@ export function LatestPapersCarousel() {
 
   async function download(paper: Paper) {
     if (!paper.ragflowDatasetId || !paper.ragflowDocId) return;
-    setBusy(paper.id);
     setError(null);
     try {
-      await downloadRagflowDocument(getRagflowConfig(), paper.ragflowDatasetId, paper.ragflowDocId, paper.title.replace(/[\\/:*?"<>|]/g, '-'));
+      if (!(await downloads.download(paper))) return;
       if (supabase) {
         const row = user
           ? supabase.from('downloads').insert({ user_id: user.id, paper_id: paper.id, paper_title: paper.title, visitor_id: getVisitorId() })
@@ -91,7 +91,7 @@ export function LatestPapersCarousel() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : t('papers.downloadFailed'));
     } finally {
-      setBusy(null);
+      /* progress lives in the download manager */
     }
   }
 
@@ -178,11 +178,11 @@ export function LatestPapersCarousel() {
                     <button
                       type="button"
                       onClick={() => void download(paper)}
-                      disabled={busy === paper.id}
+                      onPointerEnter={() => downloads.prefetch(paper)}
+                      onTouchStart={() => downloads.prefetch(paper)}
                       className="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper px-3 py-1.5 text-[12px] text-ink transition-colors hover:bg-cream disabled:opacity-50"
                     >
-                      <Download className="h-3.5 w-3.5" aria-hidden />
-                      {busy === paper.id ? t('card.preparing') : t('papers.download')}
+                      <DownloadLabel docId={paper.ragflowDocId} idle={t('papers.download')} />
                     </button>
                   </div>
                 </article>

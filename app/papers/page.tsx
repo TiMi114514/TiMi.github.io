@@ -14,7 +14,7 @@ import {
 } from '@/lib/ragflow';
 import { parsePaperName } from '@/lib/paper-meta';
 import { getCatalog, searchCatalog, type Catalog } from '@/lib/catalog';
-import { downloadRagflowDocument, getRagflowConfig } from '@/lib/ragflow';
+import { DownloadLabel, useDownloads } from '@/components/DownloadProvider';
 import { getBrowserSessionId, getVisitorId } from '@/lib/session';
 import { supabase } from '@/lib/supabase';
 import type { Paper } from '@/lib/types';
@@ -79,9 +79,9 @@ export default function PapersPage() {
   const [searching, setSearching] = useState(false);
   const [searchedQuery, setSearchedQuery] = useState('');
   const [searchSummary, setSearchSummary] = useState('');
-  const [busyId, setBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
+  const downloads = useDownloads();
   const [searchMs, setSearchMs] = useState<number | null>(null);
 
   // Whole-archive catalogue: one ~56 KB download, cached; searches then run locally.
@@ -214,19 +214,14 @@ export default function PapersPage() {
       return;
     }
 
-    setBusyId(paper.id);
     try {
-      if (paper.ragflowDocId && paper.ragflowDatasetId) {
-        await downloadRagflowDocument(
-          getRagflowConfig(),
-          paper.ragflowDatasetId,
-          paper.ragflowDocId,
-          paper.title.replace(/[\\/:*?"<>|]/g, '-'),
-        );
-      } else {
+      if (!paper.ragflowDocId || !paper.ragflowDatasetId) {
         setNotice(t('papers.noFile'));
         return;
       }
+      // Instant feedback + live progress in the download panel; errors are shown there too.
+      const ok = await downloads.download(paper);
+      if (!ok) return;
 
       if (supabase && user) {
         try {
@@ -255,7 +250,7 @@ export default function PapersPage() {
     } catch (caught) {
       setNotice(caught instanceof Error ? caught.message : t('papers.downloadFailed'));
     } finally {
-      setBusyId(null);
+      /* progress state lives in the download manager */
     }
   }
 
@@ -421,7 +416,6 @@ export default function PapersPage() {
                     key={paper.id}
                     paper={paper}
                     cta="download"
-                    busy={busyId === paper.id}
                     onDownload={() => void download(paper)}
                   />
                 ))}
@@ -496,11 +490,11 @@ export default function PapersPage() {
                             <button
                               type="button"
                               onClick={() => void download(paper)}
-                              disabled={busyId === paper.id}
+                              onPointerEnter={() => downloads.prefetch(paper)}
+                              onTouchStart={() => downloads.prefetch(paper)}
                               className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-paper px-3 py-1.5 text-[11.5px] text-ink transition-colors hover:bg-cream disabled:opacity-50"
                             >
-                              <Download className="h-3.5 w-3.5" aria-hidden />
-                              {busyId === paper.id ? t('card.preparing') : t('papers.download')}
+                              <DownloadLabel docId={paper.ragflowDocId} idle={t('papers.download')} />
                             </button>
                           </div>
                         );

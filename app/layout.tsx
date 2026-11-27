@@ -1,8 +1,9 @@
-﻿import type { Metadata, Viewport } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter, Source_Serif_4 } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/components/AuthProvider';
 import { PomodoroProvider } from '@/components/PomodoroProvider';
+import { DownloadProvider } from '@/components/DownloadProvider';
 import { AnalyticsTracker } from '@/components/AnalyticsTracker';
 import { I18nProvider } from '@/lib/i18n';
 
@@ -44,8 +45,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <I18nProvider>
           <AuthProvider>
             <PomodoroProvider>
-              <AnalyticsTracker />
-              {children}
+              <DownloadProvider>
+                <AnalyticsTracker />
+                {children}
+              </DownloadProvider>
             </PomodoroProvider>
           </AuthProvider>
         </I18nProvider>
