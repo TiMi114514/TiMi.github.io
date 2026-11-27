@@ -28,7 +28,7 @@ export type CatalogEntry = {
 export type Catalog = { version: number; fetchedAt: number; datasets: CatalogDataset[]; entries: CatalogEntry[] };
 
 const STORAGE_KEY = 'alevel-hub.catalog.v1';
-const FRESH_MS = 10 * 60 * 1000;
+const FRESH_MS = 2 * 60 * 1000;
 
 let memory: Catalog | null = null;
 let inflight: Promise<Catalog | null> | null = null;

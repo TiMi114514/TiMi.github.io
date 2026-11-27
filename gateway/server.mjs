@@ -209,8 +209,20 @@ async function refreshCatalogue() {
 }
 
 async function ensureCatalogue() {
-  const maxAge = catalogue.error || catalogue.datasets.size === 0 ? 15_000 : 5 * 60_000;
+  const maxAge = catalogue.error || catalogue.datasets.size === 0 ? 15_000 : 60_000;
   if (Date.now() - catalogue.loadedAt > maxAge) await refreshCatalogue();
+}
+
+/** True when RAGFlow reports a different document count than the index holds. */
+function indexOutOfDate() {
+  if (!index.builtAt) return true;
+  const indexed = new Map();
+  for (const d of index.docs) indexed.set(d.dataset_id, (indexed.get(d.dataset_id) || 0) + 1);
+  for (const ds of catalogue.datasets.values()) {
+    if ((ds.document_count ?? 0) !== (indexed.get(ds.id) || 0)) return true;
+  }
+  for (const id of indexed.keys()) if (!catalogue.datasets.has(id)) return true;
+  return false;
 }
 
 // ---------------------------------------------------------------- filename index (fast search)
@@ -260,7 +272,10 @@ async function buildIndex() {
 }
 
 async function ensureIndex() {
-  const stale = Date.now() - index.builtAt > 10 * 60_000;
+  await ensureCatalogue();
+  // Rebuild when the index is old, or as soon as any dataset's document count
+  // differs from what is indexed (new uploads / deletions show up within a minute).
+  const stale = Date.now() - index.builtAt > 10 * 60_000 || indexOutOfDate();
   if (!stale) return;
   if (!index.building) {
     index.building = buildIndex()
