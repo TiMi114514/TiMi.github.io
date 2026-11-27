@@ -106,6 +106,7 @@ const messages: Messages = {
   "papers.downloadFailed": "Download fehlgeschlagen.",
   "papers.searchTitle": "Gesamtes Archiv durchsuchen",
   "papers.searchHint": "Es werden nur passende Dateinamen abgerufen – kein Download ganzer Datensätze",
+  "papers.instantHint": "已缓存全部 {n} 个文件，输入即时搜索；文件名关键词可任意顺序，如“9709 s24 qp”",
   "papers.placeholder": "Dateiname, z. B. 9700_w19_ms_22 oder 9990_m26",
   "papers.searchAria": "Dateinamen durchsuchen",
   "papers.chooseDataset": "Datensatz wählen",

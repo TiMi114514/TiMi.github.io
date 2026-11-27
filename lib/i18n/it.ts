@@ -106,6 +106,7 @@ const messages: Messages = {
   "papers.downloadFailed": "Download non riuscito.",
   "papers.searchTitle": "Cerca nell'archivio completo",
   "papers.searchHint": "Vengono recuperate solo le corrispondenze nei nomi dei file, senza scaricare l'intero dataset",
+  "papers.instantHint": "已缓存全部 {n} 个文件，输入即时搜索；文件名关键词可任意顺序，如“9709 s24 qp”",
   "papers.placeholder": "Nome del file, es. 9700_w19_ms_22 o 9990_m26",
   "papers.searchAria": "Cerca nei nomi dei file",
   "papers.chooseDataset": "Scegli il dataset",

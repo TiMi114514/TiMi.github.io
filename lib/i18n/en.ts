@@ -103,6 +103,7 @@ const en = {
   "papers.downloadFailed": "Download failed.",
   "papers.searchTitle": "Search the full archive",
   "papers.searchHint": "Only filename matches are fetched — no full dataset download",
+  "papers.instantHint": "已缓存全部 {n} 个文件，输入即时搜索；文件名关键词可任意顺序，如“9709 s24 qp”",
   "papers.placeholder": "File name, e.g. 9700_w19_ms_22 or 9990_m26",
   "papers.searchAria": "Search file names",
   "papers.chooseDataset": "Choose dataset",

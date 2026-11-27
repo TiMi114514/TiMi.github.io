@@ -106,6 +106,7 @@ const messages: Messages = {
   "papers.downloadFailed": "ダウンロードに失敗しました。",
   "papers.searchTitle": "アーカイブ全体を検索",
   "papers.searchHint": "ファイル名の一致のみ取得します（データセット全体はダウンロードしません）",
+  "papers.instantHint": "已缓存全部 {n} 个文件，输入即时搜索；文件名关键词可任意顺序，如“9709 s24 qp”",
   "papers.placeholder": "ファイル名（例: 9700_w19_ms_22、9990_m26）",
   "papers.searchAria": "ファイル名を検索",
   "papers.chooseDataset": "データセットを選択",

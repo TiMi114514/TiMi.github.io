@@ -12,6 +12,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import zlib from 'node:zlib';
 import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { startMonitor } from './monitor.mjs';
@@ -371,7 +372,7 @@ function corsHeaders(req) {
     headers['Access-Control-Allow-Origin'] = origin;
     headers['Access-Control-Allow-Headers'] = 'Authorization, Content-Type';
     headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS';
-    headers['Access-Control-Expose-Headers'] = 'Content-Disposition, Retry-After, X-Quota-Used, X-Quota-Limit, X-Plan';
+    headers['Access-Control-Expose-Headers'] = 'Content-Disposition, Retry-After, X-Quota-Used, X-Quota-Limit, X-Plan, X-Catalog-Version';
     headers['Access-Control-Max-Age'] = '600';
   }
   return headers;
@@ -381,8 +382,30 @@ function send(res, ctx, status, body, extra = {}) {
   if (res.headersSent) return res.end();
   ctx.status = status;
   const payload = typeof body === 'string' ? body : JSON.stringify(body);
+  // Compress larger JSON responses (search results, catalogue): ~10x smaller over Funnel.
+  if (payload.length > 2048 && /\bgzip\b/.test(String(ctx.acceptEncoding || ''))) {
+    const zipped = zlib.gzipSync(payload, { level: 6 });
+    res.writeHead(status, { ...ctx.cors, 'Content-Type': 'application/json; charset=utf-8', 'Content-Encoding': 'gzip', Vary: 'Accept-Encoding, Origin', ...extra });
+    return res.end(zipped);
+  }
   res.writeHead(status, { ...ctx.cors, 'Content-Type': 'application/json; charset=utf-8', ...extra });
   res.end(payload);
+}
+
+// Compact catalogue of every document name, cached per index build (gzipped once).
+const catalogCache = { builtAt: 0, json: '', gzip: null };
+function catalogPayload() {
+  if (catalogCache.builtAt === index.builtAt && catalogCache.gzip) return catalogCache;
+  const datasets = [...catalogue.datasets.values()].map((d) => ({ id: d.id, name: d.name, count: d.document_count ?? 0 }));
+  const position = new Map(datasets.map((d, i) => [d.id, i]));
+  const docs = index.docs
+    .filter((d) => position.has(d.dataset_id))
+    .map((d) => [d.id, d.name.split('/').pop() || d.name, d.size ?? 0, position.get(d.dataset_id)]);
+  const json = JSON.stringify({ code: 0, data: { v: index.builtAt, datasets, docs } });
+  catalogCache.builtAt = index.builtAt;
+  catalogCache.json = json;
+  catalogCache.gzip = zlib.gzipSync(json, { level: 9 });
+  return catalogCache;
 }
 
 const fail = (res, ctx, status, message, extra) => send(res, ctx, status, { code: status, message }, extra);
@@ -584,6 +607,24 @@ async function handle(req, res, ctx) {
     return send(res, ctx, 200, { code: 0, data: [...catalogue.datasets.values()].map(pickDataset) });
   }
 
+  // GET /api/v1/catalog — every document name in one compressed response, so the
+  // browser can cache it and search locally (instant results, no round trip per search).
+  if (req.method === 'GET' && p === '/api/v1/catalog') {
+    ctx.route = 'catalog';
+    if (!limit(res, ctx, `read:${ctx.ip}`, CFG.limits.ipRead)) return;
+    await ensureIndex();
+    if (index.builtAt === 0) return fail(res, ctx, 502, 'Search index is not ready.');
+    const c = catalogPayload();
+    ctx.status = 200;
+    const headers = { ...ctx.cors, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=300', 'X-Catalog-Version': String(c.builtAt), Vary: 'Accept-Encoding, Origin' };
+    if (/\bgzip\b/.test(String(ctx.acceptEncoding || ''))) {
+      res.writeHead(200, { ...headers, 'Content-Encoding': 'gzip' });
+      return res.end(c.gzip);
+    }
+    res.writeHead(200, headers);
+    return res.end(c.json);
+  }
+
   // GET /api/v1/search — one-shot filename search over every allowed dataset
   if (req.method === 'GET' && p === '/api/v1/search') {
     ctx.route = 'search';
@@ -707,7 +748,7 @@ async function handle(req, res, ctx) {
 // ---------------------------------------------------------------- server
 
 const server = http.createServer(async (req, res) => {
-  const ctx = { ip: clientIp(req), uid: null, route: '-', status: 0, bytes: 0, start: Date.now(), cors: corsHeaders(req) };
+  const ctx = { ip: clientIp(req), uid: null, route: '-', status: 0, bytes: 0, start: Date.now(), cors: corsHeaders(req), acceptEncoding: req.headers['accept-encoding'] };
   res.on('finish', () => {
     log({ ip: ctx.ip, uid: ctx.uid, m: req.method, route: ctx.route, path: req.url.split('?')[0].slice(0, 120), status: ctx.status || res.statusCode, ms: Date.now() - ctx.start, bytes: ctx.bytes, funnel: req.headers['tailscale-funnel-request'] ? 1 : 0 });
   });

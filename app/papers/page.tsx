@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Download, FileText, Search, ShieldCheck } from 'lucide-react';
 import { Header } from '@/components/Header';
@@ -13,6 +13,7 @@ import {
   type ArchivePreviewData,
 } from '@/lib/ragflow';
 import { parsePaperName } from '@/lib/paper-meta';
+import { getCatalog, searchCatalog, type Catalog } from '@/lib/catalog';
 import { downloadRagflowDocument, getRagflowConfig } from '@/lib/ragflow';
 import { getBrowserSessionId, getVisitorId } from '@/lib/session';
 import { supabase } from '@/lib/supabase';
@@ -80,6 +81,26 @@ export default function PapersPage() {
   const [searchSummary, setSearchSummary] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [catalog, setCatalog] = useState<Catalog | null>(null);
+  const [searchMs, setSearchMs] = useState<number | null>(null);
+
+  // Whole-archive catalogue: one ~56 KB download, cached; searches then run locally.
+  useEffect(() => {
+    let active = true;
+    getCatalog().then((c) => {
+      if (!active || !c) return;
+      setCatalog(c);
+      // The subject list and counts come from the catalogue too — no extra requests.
+      setPreview((prev) => prev ?? {
+        papers: [],
+        datasets: c.datasets.map((d) => ({ id: d.id, name: d.name, count: d.count })),
+        totalDocuments: c.entries.length,
+      });
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -105,8 +126,24 @@ export default function PapersPage() {
     return Array.from(map.entries());
   }, [results]);
 
-  async function search(event: React.FormEvent) {
-    event.preventDefault();
+  // With the catalogue loaded, results follow the inputs live (debounced) — no button press needed.
+  const liveReady = useRef(false);
+  useEffect(() => {
+    if (!catalog) return;
+    if (!liveReady.current) {
+      liveReady.current = true;
+      return;
+    }
+    const needle = query.trim();
+    const active = needle.length >= 2 || year !== 'All' || type !== 'All' || dataset !== 'All';
+    if (!active) return;
+    const timer = window.setTimeout(() => void search(), 180);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalog, query, dataset, year, season, type]);
+
+  async function search(event?: React.FormEvent) {
+    event?.preventDefault();
     const needle = query.trim();
     const hasFilters =
       needle.length >= 2 || year !== 'All' || type !== 'All' || dataset !== 'All';
@@ -123,13 +160,24 @@ export default function PapersPage() {
     setSearching(true);
     setNotice(null);
     try {
-      const matches = await searchRagflowDocuments({
+      const started = performance.now();
+      const local = catalog ?? (await getCatalog());
+      const filters = {
+        query: needle,
+        datasetId: dataset === 'All' ? undefined : dataset,
+        year: year === 'All' ? null : Number(year),
+        season: season === 'All' ? null : (season as 'm' | 's' | 'w'),
+        type: type === 'All' ? null : type,
+      };
+      // Fast path: search the cached catalogue in the browser. Fallback: the old per-dataset requests.
+      const matches = local ? searchCatalog(local, filters) : await searchRagflowDocuments({
         query: needle,
         datasetId: dataset === 'All' ? undefined : dataset,
         year: year === 'All' ? null : Number(year),
         season: season === 'All' ? null : (season as 'm' | 's' | 'w'),
         type: type === 'All' ? null : type,
       });
+      setSearchMs(Math.round(performance.now() - started));
       setResults(matches);
       setSearchedQuery(needle || 'Filters');
       const parts = [
@@ -257,7 +305,7 @@ export default function PapersPage() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-display text-[22px] leading-none">{t('papers.searchTitle')}</h2>
             <span className="text-[11px] text-muted">
-              {t('papers.searchHint')}
+              {catalog ? t('papers.instantHint', { n: catalog.entries.length.toLocaleString() }) : t('papers.searchHint')}
             </span>
           </div>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -391,6 +439,7 @@ export default function PapersPage() {
                 <p className="mt-1 text-[12px] text-muted">
                   {t('papers.matches', { n: results.length })}
                   {searchSummary ? ` · ${searchSummary}` : ''}
+                  {searchMs !== null && catalog ? ` · ${searchMs} ms` : ''}
                 </p>
               </div>
               <button type="button" onClick={clearSearch} className="btn-light px-4 py-2">

@@ -106,6 +106,7 @@ const messages: Messages = {
   "papers.downloadFailed": "Échec du téléchargement.",
   "papers.searchTitle": "Rechercher dans toutes les archives",
   "papers.searchHint": "Seuls les noms de fichiers correspondants sont récupérés — pas de téléchargement complet du jeu de données",
+  "papers.instantHint": "已缓存全部 {n} 个文件，输入即时搜索；文件名关键词可任意顺序，如“9709 s24 qp”",
   "papers.placeholder": "Nom de fichier, ex. 9700_w19_ms_22 ou 9990_m26",
   "papers.searchAria": "Rechercher des noms de fichiers",
   "papers.chooseDataset": "Choisir un jeu de données",

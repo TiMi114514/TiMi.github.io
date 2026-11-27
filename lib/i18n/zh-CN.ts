@@ -106,6 +106,7 @@ const messages: Messages = {
   "papers.downloadFailed": "下载失败。",
   "papers.searchTitle": "搜索完整真题库",
   "papers.searchHint": "仅获取文件名匹配的结果，不会下载整个数据集",
+  "papers.instantHint": "已缓存全部 {n} 个文件，输入即时搜索；文件名关键词可任意顺序，如“9709 s24 qp”",
   "papers.placeholder": "文件名，如 9700_w19_ms_22 或 9990_m26",
   "papers.searchAria": "搜索文件名",
   "papers.chooseDataset": "选择数据集",
