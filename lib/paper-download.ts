@@ -52,7 +52,17 @@ function start(datasetId: string, docId: string): Entry {
   const cfg = getRagflowConfig();
   const url = `${cfg.baseUrl}/api/v1/datasets/${encodeURIComponent(datasetId)}/documents/${encodeURIComponent(docId)}`;
   entry.promise = (async () => {
-    const res = await fetch(url, { signal: controller.signal });
+    // Signed-in students send their token so the gateway limits them per account
+    // (a whole school can share one IP).
+    let headers: Record<string, string> = {};
+    try {
+      const { supabase } = await import('./supabase');
+      const token = supabase ? (await supabase.auth.getSession()).data.session?.access_token : undefined;
+      if (token) headers = { Authorization: `Bearer ${token}` };
+    } catch {
+      /* guest */
+    }
+    const res = await fetch(url, { signal: controller.signal, headers });
     if (!res.ok) {
       let message = `下载失败（${res.status}）`;
       try {

@@ -40,13 +40,19 @@ const CFG = {
   chatConcurrency: int(env.CHAT_CONCURRENCY, 3),
   limits: {
     // [requests, window seconds]
-    ipAll: [int(env.LIMIT_IP_PER_MIN, 240), 60],
-    ipRead: [int(env.LIMIT_READ_PER_MIN, 120), 60],
-    ipDownload: [int(env.LIMIT_DOWNLOAD_PER_MIN, 20), 60],
-    ipDownloadDay: [int(env.LIMIT_DOWNLOAD_PER_DAY, 400), 86_400],
+    // Per IP. A whole school can share one public IP, so these are a generous safety net;
+    // signed-in students are limited per account instead (below).
+    ipAll: [int(env.LIMIT_IP_PER_MIN, 1200), 60],
+    ipRead: [int(env.LIMIT_READ_PER_MIN, 600), 60],
+    ipDownload: [int(env.LIMIT_DOWNLOAD_PER_MIN, 30), 60], // guests (not signed in), per IP
+    ipDownloadDay: [int(env.LIMIT_DOWNLOAD_PER_DAY, 600), 86_400], // guests, per IP
+    ipDownloadShared: [int(env.LIMIT_DOWNLOAD_SHARED_PER_MIN, 240), 60], // everything from one IP
+    ipDownloadSharedDay: [int(env.LIMIT_DOWNLOAD_SHARED_PER_DAY, 8000), 86_400],
+    userDownload: [int(env.LIMIT_USER_DOWNLOAD_PER_MIN, 30), 60], // each signed-in student
+    userDownloadDay: [int(env.LIMIT_USER_DOWNLOAD_PER_DAY, 500), 86_400],
     userChat: [int(env.LIMIT_CHAT_PER_MIN, 12), 60],
     userChatDay: [int(env.LIMIT_CHAT_PER_DAY, 300), 86_400],
-    ipChat: [int(env.LIMIT_IP_CHAT_PER_MIN, 30), 60],
+    ipChat: [int(env.LIMIT_IP_CHAT_PER_MIN, 120), 60],
   },
   banAfterAuthFailures: int(env.BAN_AFTER_AUTH_FAILURES, 30),
   banMinutes: int(env.BAN_MINUTES, 30),
@@ -527,6 +533,13 @@ const pickChunk = (chunk) => ({
 
 // ---------------------------------------------------------------- auth / limits per route
 
+/** Valid Supabase user from the Authorization header, or null (never fails the request). */
+function optionalUser(req) {
+  const header = String(req.headers.authorization || '');
+  const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+  return token ? verifyJwt(token) : null;
+}
+
 function requireUser(req, res, ctx) {
   if (!CFG.requireLoginForChat) return { sub: 'anonymous' };
   const header = String(req.headers.authorization || '');
@@ -669,8 +682,19 @@ async function handle(req, res, ctx) {
   // GET /api/v1/datasets/:ds/documents/:doc  (download)
   if (req.method === 'GET' && (m = /^\/api\/v1\/datasets\/([a-f0-9]{32})\/documents\/([a-f0-9]{32})$/.exec(p))) {
     ctx.route = 'documents.download';
-    if (!limit(res, ctx, `dl:${ctx.ip}`, CFG.limits.ipDownload)) return;
-    if (!limit(res, ctx, `dlday:${ctx.ip}`, CFG.limits.ipDownloadDay)) return;
+    // Signed-in students carry their Supabase token: limit per account, so a class behind
+    // one school IP does not share one small quota. Guests are still limited per IP.
+    const dlUser = optionalUser(req);
+    if (dlUser) {
+      ctx.uid = String(dlUser.sub).slice(0, 8);
+      if (!limit(res, ctx, `udl:${dlUser.sub}`, CFG.limits.userDownload)) return;
+      if (!limit(res, ctx, `udlday:${dlUser.sub}`, CFG.limits.userDownloadDay)) return;
+    } else {
+      if (!limit(res, ctx, `dl:${ctx.ip}`, CFG.limits.ipDownload)) return;
+      if (!limit(res, ctx, `dlday:${ctx.ip}`, CFG.limits.ipDownloadDay)) return;
+    }
+    if (!limit(res, ctx, `dlip:${ctx.ip}`, CFG.limits.ipDownloadShared)) return;
+    if (!limit(res, ctx, `dlipday:${ctx.ip}`, CFG.limits.ipDownloadSharedDay)) return;
     await ensureCatalogue();
     if (!catalogue.datasets.has(m[1])) return fail(res, ctx, 404, 'Not found.');
     // Documents never change once uploaded: let browsers cache them and revalidate cheaply.

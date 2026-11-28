@@ -44,6 +44,7 @@ const navItems = [
   { href: '/admin/visitors', label: 'Live visitors', icon: Activity, badge: 'Live' },
   { href: '/admin/servers', label: 'Servers', icon: Server },
   { href: '/admin/alerts', label: 'Alerts', icon: BellRing },
+  { href: '/admin/services', label: '服务配置', icon: Plug },
   { href: '/admin/domains', label: 'Domains', icon: Globe },
   { href: '/admin/integrations', label: 'Integrations', icon: Plug },
   { href: '/admin/security', label: 'Security', icon: ShieldCheck },

@@ -81,7 +81,7 @@ export default function AdminAlertsPage() {
       <div className="mt-5 grid gap-3 md:grid-cols-4">
         {[
           ['Watcher', data ? (data.watcher_scheduled ? 'running every minute' : 'NOT scheduled') : '—', data?.watcher_scheduled ? 'green' : 'red'],
-          ['Email provider', data ? (data.email_configured ? 'Resend connected' : 'not connected') : '—', data?.email_configured ? 'green' : 'amber'],
+          ['Email provider', data ? (data.email_configured ? ((data as { email_provider?: string }).email_provider ?? 'SMTP') + ' connected' : 'not connected') : '—', data?.email_configured ? 'green' : 'amber'],
           ['Open alerts', data ? String(data.open.length) : '—', data?.open.length ? 'red' : 'green'],
           ['Alerts', cfg ? (cfg.enabled ? 'enabled' : 'paused') : '—', cfg?.enabled ? 'green' : 'amber'],
         ].map(([label, value, tone]) => (
@@ -94,8 +94,7 @@ export default function AdminAlertsPage() {
 
       {data && !data.email_configured ? (
         <div className="mt-4 rounded-xl border border-[#fde68a] bg-[#fffbeb] px-4 py-3 text-[12.5px] leading-relaxed text-[#92400e]">
-          Alerts are being recorded below but no email is sent yet. Create a free API key at resend.com (sign up with the alert
-          recipient's address) and have it stored in Supabase Vault as <span className="font-mono">resend_api_key</span>.
+          Alerts are being recorded below but no email is sent yet. Set up the default SMTP server (Outlook.com) under Admin &gt; 服务配置 and connect it — alert emails are then sent from the cloud.
         </div>
       ) : null}
 
@@ -128,7 +127,7 @@ export default function AdminAlertsPage() {
                 className={inputClass}
               />
             </label>
-            <p className="text-[11px] text-[#a1a1aa]">Sender: {cfg?.from}. Without your own domain, Resend only delivers to the address you signed up with.</p>
+            <p className="text-[11px] text-[#a1a1aa]">Sent through the default SMTP server configured in 服务配置.</p>
             <div className="flex flex-wrap gap-2">
               <Button variant="dark" onClick={() => void saveRecipients()} disabled={busy || recipients === null}>Save recipients</Button>
               <Button onClick={() => void test()} disabled={busy}><Send className="h-3.5 w-3.5" /> Send test email</Button>
